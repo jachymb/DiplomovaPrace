@@ -1,7 +1,7 @@
 import subprocess
 import os
 from pathlib import Path
-from learn import learningTest
+from dp.learn import learningTest
 
 RESULTS = Path('results')
 NUM_FOLDS = 8
