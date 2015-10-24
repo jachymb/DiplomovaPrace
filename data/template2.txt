@@ -1,0 +1,7 @@
+residue(-a, #resType), residue(+b, #resType),
+dist(+a, !resType, -b, !resType, #num), next(+a, -b), 
+residue(-a, -r1),
+positive(+r1),negative(+r1),neutral(+r1),nonpolar(+r1),polar(+r1),
+residue(+b, -r2),
+positive(+r2),negative(+r2),neutral(+r2),nonpolar(+r2),polar(+r2),
+
