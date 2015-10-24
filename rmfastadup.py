@@ -1,8 +1,8 @@
 #!/usr/bin/python
 """Remove duplicates in a fasta file"""
-from collections import Counter
 import sys
-from associations import GeneAssociations
+from dp.associations import GeneAssociations
+from collections import Counter
 seqs = set()
 names = set()
 fastafile = open(sys.argv[1])

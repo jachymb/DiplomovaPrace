@@ -1,9 +1,9 @@
 __all__ = ["GeneAssociations"]
 
 import pickle
-from utils import debug
+from dp.gene import Gene
+from dp.utils import debug
 from collections import defaultdict
-from gene import Gene
 
 class GeneAssociations:
     """This class associates GO terms with genes."""

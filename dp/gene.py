@@ -3,7 +3,7 @@ import gzip
 import xml.etree.ElementTree as ElementTree
 import re
 import operator
-from utils import debug
+from dp.utils import debug
 from pathlib import Path
 from collections import defaultdict
 from urllib.request import urlopen, Request
@@ -57,7 +57,7 @@ class GeneFactory:
         while name in self.openGenes:
             time.sleep(0.1)
         if self.deserialize and serializedFileName.is_file() and serializedFileName.stat().st_mtime > xmlFileName.stat().st_mtime:
-            debug("Deserializing data for gene " + fullName)
+            #debug("Deserializing data for gene " + fullName)
             with serializedFileName.open('rb') as f:
                 try:
                     data = pickle.load(f)

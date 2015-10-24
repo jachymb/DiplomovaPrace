@@ -7,9 +7,9 @@ import random
 random.seed(0)
 
 from optparse import OptionParser
-from ontology import Ontology
-from associations import GeneAssociations
-from gene import Gene
+from dp.ontology import Ontology
+from dp.associations import GeneAssociations
+from dp.gene import Gene
 
 #TAXONS_SOLANCEAE = {13442,243963,24663,4071,4074,4078,4081,4085,4101,4111,4113,448155}
 #TAXONS_SACCHAROMYCES_CEREVISIAE = {559292}

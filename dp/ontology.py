@@ -5,12 +5,12 @@ import progressbar
 import random
 import traceback
 import json
-from gene import GeneFactory
-from utils import debug
+from dp.gene import GeneFactory
+from dp.utils import debug
+from dp.treeliker import TreeLikerWrapper
 from collections import defaultdict
 from itertools import groupby
 from pathlib import Path
-from treeliker import TreeLikerWrapper
 
 
 class Ontology:
