@@ -173,7 +173,7 @@ class Ontology:
 
     def completeTest(self, maxPositive, maxNegative, treelikerPath, template):
         bestClassifiers = []
-        terms = sorted(self.ontology.keys())[:3]
+        terms = sorted(self.ontology.keys())[1:3]
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
         for term in terms:
             if term == self.root:

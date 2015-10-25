@@ -8,9 +8,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn import cross_validation
 from sklearn.preprocessing import normalize, scale, StandardScaler
+from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix
 from pathlib import Path
 from collections import Counter
+
+from sklearn.decomposition import PCA
+from sklearn.lda import LDA
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -54,8 +58,10 @@ def readArff(filename):
 
 def learningTest(cvdir):
     clasfifiers = (
+            #TOOD, use third dict for params
+            ("SGD", lambda: SGDClassifier(n_iter=100,alpha=0.01)),
             ("RBF SVM C=0.5", lambda : SVC(C=0.1)),
-            ("RBF SVM C=1", SVC),
+            ("RBF SVM C=1", lambda: SVC(shrinking=False, tol=1e-5)),
             ("RBF SVM C=2", lambda : SVC(C=10)),
             ("RBF SVM C=inf", lambda : SVC(C=numpy.inf)),
             ("Linear SVM C=1", lambda: SVC(kernel='linear')),
@@ -103,7 +109,9 @@ def learningTest(cvdir):
 
                 clf.fit(X_train, y_train, sample_weight = sample_weight)
                 y_pred = clf.predict(X_test)
-                score = accuracy_score(y_test, y_pred)
+                pos = (y_test == POSTIVE_LABEL)
+                neg = (y_test == NEGATIVE_LABEL)
+                score = accuracy_score(y_test[pos], y_pred[pos])*posWeight + accuracy_score(y_test[neg], y_pred[neg])*negWeight
                 #prec = precision_score(y_test, y_pred, average='weighted')
                 #reca = recall_score(y_test, y_pred, average='weighted')
                 conf = confusion_matrix(y_test, y_pred)
@@ -113,6 +121,28 @@ def learningTest(cvdir):
                 clf.cvindex = i
                 clf.name = name
                 classifiers.append(clf)
+
+                #import matplotlib.pyplot as plt
+                #target_names = ["pos","neg"]
+                #pca = PCA(n_components=2)
+                #X_r = pca.fit(X_train).transform(X_train)
+                #print(X_r.shape)
+                #plt.figure()
+                #for c, i, target_name in zip("rg", [0, 1], target_names):
+                #    plt.scatter(X_r[y_train == i, 0], X_r[y_train == i, 1], c=c, label=target_name)
+                #plt.legend()
+                #plt.title('PCA')
+
+                #lda = LDA(n_components=10)
+                #X_r2 = lda.fit(X_train, y_train).transform(X_test)
+                #plt.figure()
+                #print(X_r2.shape)
+                #for c, i, target_name in zip("rg", [0, 1], target_names):
+                #    plt.scatter(X_r2[y_test == i, 0], X_r2[y_test == i, 0], c=c, label=target_name)
+                #plt.legend()
+                #plt.title('LDA')
+
+                #plt.show()
                 
             scores = numpy.array(scores)
             print("Average: %.2f%% (+/- %.2f%%)" % (scores.mean()*100.0, scores.std() * 2 * 100.0), file=output)
