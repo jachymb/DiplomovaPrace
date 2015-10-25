@@ -108,13 +108,8 @@ def learningTest(cvdir):
 
             #results.append(bestClassifier)
             yield bestClassifier
-    #return results
-
 
 if __name__ == "__main__":
     cvdir = Path(sys.argv[1])
-    print("yes", cvdir)
     for best in learningTest(cvdir):
         print(best.__class__.__name__, "done.")
-
-#Counter(map(lambda l: re.search('^".*?"', l).group(), filter(lambda l: l.strip() != '', open('dataset.txt'))))

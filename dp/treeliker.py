@@ -63,4 +63,4 @@ class TreeLikerWrapper:
         print()
         os.chdir(pwd)
 
-        return learningTest(resultPath)
+        return tuple(learningTest(resultPath))
