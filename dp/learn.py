@@ -17,6 +17,8 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 __all__ = ['readArff', 'learningTest']
 
+POSTIVE_LABEL = 0
+NEGATIVE_LABEL = 1
 def readArff(filename):
     """ Parses the ARFF file """
     
@@ -51,22 +53,31 @@ def readArff(filename):
     return numpy.array(data, dtype=float), numpy.array(labels), classes
 
 def learningTest(cvdir):
-    clasfifiers = (("SVM", SVC), ("Random Forest", RandomForestClassifier))
+    clasfifiers = (
+            ("RBF SVM C=0.5", lambda : SVC(C=0.1)),
+            ("RBF SVM C=1", SVC),
+            ("RBF SVM C=2", lambda : SVC(C=10)),
+            ("RBF SVM C=inf", lambda : SVC(C=numpy.inf)),
+            ("Linear SVM C=1", lambda: SVC(kernel='linear')),
+            ("Quadratic SVM C=1", lambda: SVC(kernel='poly', degree=2)),
+            ("Cubic SVM C=1", lambda: SVC(kernel='poly', degree=3)),
+            ("Random Forest", RandomForestClassifier),
+            )
 
     scaler = StandardScaler()
     results = []
     with (cvdir / 'scores.txt').open('w') as output:
         print('Cross Validation results for file term %s:' % cvdir.name, file=output)
+        print('Confusion Matrix: [[True positive, False postive], [False negative, True negative]]', file=output)
+        counts = Counter(
+                   (re.search(r'^"(.*?)"', l).groups()[0]
+                    for l in (cvdir / 'dataset.txt').open()
+                    if l.strip() != ''))
         print('Dataset entry counts: ' +
                 ", ".join(
-                    ("%s - %d" % item
-                        for item
-                        in sorted(
-                            Counter(
-                                (re.search(r'^"(.*?)"', l).groups()[0]
-                                 for l in (cvdir / 'dataset.txt').open()
-                                 if l.strip() != '')
-                            ).items()))),
+                    ("%s = %d" % item
+                     for item
+                     in sorted(counts.items()))),
             file = output)
 
         for name, Clf in clasfifiers:
@@ -83,8 +94,14 @@ def learningTest(cvdir):
 
                 X_train = scaler.fit_transform(X_train)
                 X_test = scaler.transform(X_test, copy=True)
+               
+                pos = (y_train == POSTIVE_LABEL)
+                neg = (y_train == NEGATIVE_LABEL)
+                posWeight = numpy.sum(neg) / len(y_train)
+                negWeight = numpy.sum(pos) / len(y_train)
+                sample_weight = posWeight*pos + negWeight*neg
 
-                clf.fit(X_train, y_train)
+                clf.fit(X_train, y_train, sample_weight = sample_weight)
                 y_pred = clf.predict(X_test)
                 score = accuracy_score(y_test, y_pred)
                 #prec = precision_score(y_test, y_pred, average='weighted')
@@ -94,11 +111,12 @@ def learningTest(cvdir):
                 scores.append(score)
                 clf.conf = conf
                 clf.cvindex = i
+                clf.name = name
                 classifiers.append(clf)
                 
             scores = numpy.array(scores)
             print("Average: %.2f%% (+/- %.2f%%)" % (scores.mean()*100.0, scores.std() * 2 * 100.0), file=output)
-            print("Best: %.2f%%\n" % (scores.max()*100.0), file=output)
+            print("Best: %.2f%%\n" % (scores.max()*100.0), file=output, flush=True)
             bestPerforming = numpy.argmax(scores)
             bestClassifier = classifiers[bestPerforming]
             bestClassifier.cvindex = bestPerforming
@@ -112,4 +130,4 @@ def learningTest(cvdir):
 if __name__ == "__main__":
     cvdir = Path(sys.argv[1])
     for best in learningTest(cvdir):
-        print(best.__class__.__name__, "done.")
+        print(best.name, "done.")

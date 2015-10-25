@@ -90,4 +90,6 @@ class GeneAssociations:
             if gene in self[term]:
                 yield term
 
-
+    def getRatio(self, term):
+        """Returns relative number of genes associated with terms compared to all genes"""
+        return len(self[term]) / len(self.associations[self.ontology.root])

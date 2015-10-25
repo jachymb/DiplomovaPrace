@@ -144,10 +144,12 @@ class Ontology:
             #    if future.exception() is not None:
             #        debug("Exception: " + future.exception())
 
-    def generateDataset(self, term, output, maxPositive = None, maxNegative = None, testRatio = 0.1):
+    def generateDataset(self, term, output, maxPositive = None, maxNegative = None):
         """Generate whole dataset directly usable for learning. The terms are used as learning classes."""
+        # FIXME: Remove maxNegative parameter
         debug("Generating dataset for term: %s" % (term))
         totalPos = len(self.associations[term]) if maxPositive is None else min(maxPositive, len(self.associations[term]))
+        maxNegative = round(totalPos / self.associations.getRatio(term))
         totalNeg = len(self.associations[term]) if maxPositive is None else min(maxNegative, len(self.associations['~'+term]))
         total = totalPos + totalNeg
         debug("We use %d postive and %d negative examples." % (totalPos, totalNeg))
@@ -179,6 +181,7 @@ class Ontology:
 
             best = treeliker.runTermTest(term, maxPositive, maxNegative)
             bestClassifiers.append(best)
+            print("Best:",best)
             
         #bnet = self._toBayessNet(bestClassifiers, terms)
 
