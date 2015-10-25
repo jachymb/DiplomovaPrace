@@ -5,7 +5,7 @@ RSYNC=/usr/bin/rsync                             # location of local rsync
 SERVER=rsync.ebi.ac.uk::pub/databases/rcsb/pdb-remediated     # PDBe server name
 PORT=873                                                      # port PDBe server is using
 
-mkdir results
+mkdir -p results
 mkdir -p data/associations data/derived_data data/obo data/serialized_genes data/xml 
 cd data
 

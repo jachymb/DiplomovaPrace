@@ -8,12 +8,15 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn import cross_validation
 from sklearn.preprocessing import normalize, scale, StandardScaler
-from sklearn.metrics import accuracy_score, recall_score, precision_score
+from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix
 from pathlib import Path
 from collections import Counter
 
-FOLDS = 10
-CVTESTS = 10
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
+__all__ = ['readArff', 'learningTest']
+
 def readArff(filename):
     """ Parses the ARFF file """
     
@@ -73,7 +76,7 @@ def learningTest(cvdir):
 
             for train, test in zip(sorted(cvdir.glob('train_*.arff')), sorted(cvdir.glob('test_*.arff'))):
                 clf = Clf()
-                i = train.name[1+train.name.find('_'):train.name.find('.')]
+                i = int(train.name[1+train.name.find('_'):train.name.find('.')])
 
                 X_train, y_train, _ = readArff(train)
                 X_test , y_test,  _ = readArff(test)
@@ -84,10 +87,13 @@ def learningTest(cvdir):
                 clf.fit(X_train, y_train)
                 y_pred = clf.predict(X_test)
                 score = accuracy_score(y_test, y_pred)
-                prec = precision_score(y_test, y_pred, average='weighted')
-                reca = recall_score(y_test, y_pred, average='weighted')
-                print("Fold %s score: %.2f, weighted precision: %.2f, weighted recall: %.2f" % (i, score*100.0, prec * 100.0, reca % 100.0), file=output)
+                #prec = precision_score(y_test, y_pred, average='weighted')
+                #reca = recall_score(y_test, y_pred, average='weighted')
+                conf = confusion_matrix(y_test, y_pred)
+                print("Fold %d score: %.2f, confusion matrix: %s" % (i, score*100.0, conf.tolist()), file=output)
                 scores.append(score)
+                clf.conf = conf
+                clf.cvindex = i
                 classifiers.append(clf)
                 
             scores = numpy.array(scores)
@@ -107,6 +113,8 @@ def learningTest(cvdir):
 
 if __name__ == "__main__":
     cvdir = Path(sys.argv[1])
-    learningTest(cvdir)
+    print("yes", cvdir)
+    for best in learningTest(cvdir):
+        print(best.__class__.__name__, "done.")
 
 #Counter(map(lambda l: re.search('^".*?"', l).group(), filter(lambda l: l.strip() != '', open('dataset.txt'))))

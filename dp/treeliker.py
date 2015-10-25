@@ -6,6 +6,8 @@ from dp.learn import learningTest
 RESULTS = Path('results')
 NUM_FOLDS = 8
 
+__all__ = ["TreeLikerWrapper"]
+
 class TreeLikerWrapper:
     def __init__(self, ontology, treeliker, template):
         self.ontology = ontology
@@ -47,7 +49,8 @@ class TreeLikerWrapper:
         os.chdir(str(resultPath))
 
         with subprocess.Popen(
-                ["java", "-Xmx1G", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name],
+                #["java", "-Xmx3G", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name],
+                ["java", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name],
                 stdout = subprocess.PIPE, bufsize = 1, universal_newlines=True) as treelikerProc:
             prev = 0
             i = 1

@@ -50,11 +50,12 @@ if __name__ == "__main__":
 
     dataset = None
     if options.dataset:
-        dataset = list(open(options.dataset).read().splitlines())
+        # FIXME: When dataset is changed, serialized associations need to be regenerated. This is serious bug if we don't seed random
+        dataset = [*open(options.dataset).read().splitlines()]
         random.shuffle(dataset)
         splitIndex = int(options.reserve * len(dataset))
         reserved = set(dataset[:splitIndex])
-        dataset = set(dataset[-splitIndex:])
+        dataset = set(dataset[splitIndex:])
 
     associations = GeneAssociations.fromFile(associationsFileName, dataset = dataset)
 

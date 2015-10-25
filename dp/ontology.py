@@ -1,5 +1,3 @@
-__all__ = ["Onotology"]
-
 import sys
 import progressbar
 import random
@@ -12,6 +10,7 @@ from collections import defaultdict
 from itertools import groupby
 from pathlib import Path
 
+__all__ = ["Onotology"]
 
 class Ontology:
     """ Class representing the Gene Onotology graph."""
@@ -161,13 +160,7 @@ class Ontology:
         self.generateExamples('~'+term, pbar, output, maxNegative)
         pbar.finish()
 
-        # Calculate train set and test set indices
-        #posTest = round(totalPos * testRatio)
-        #negTest = round(totalNeg * testRatio)
-        #testSet = [*range(posTest)] + [*range(totalPos, totalPos+negTest)]
-        #trainSet = [*range(posTest, totalPos)] + [*range(totalPos+negTest, totalPos+totalNeg)]
-
-        debug("Finished generating dataset.")
+        #debug("Finished generating dataset.")
 
     def getTermByName(self, name):
         """Returns human-readable name of the given GO term."""
