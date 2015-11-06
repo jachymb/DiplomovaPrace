@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_option("-m", "--max-positive", dest="max_positive", type="int", help="Maximum positive samples.")
     parser.add_option("-n", "--max-negative", dest="max_negative", type="int", help="Maximum negative samples.")
     parser.add_option("-p", "--template", dest="template", help="The template for TreeLiker. Use with -f.")
-    parser.add_option("-r", "--reserve", dest="reserve", type="float", help="Ratio of genes to reserve for Bayessian learning.", default = 0.1)
+    parser.add_option("-r", "--reserve", dest="reserve", type="float", help="Ratio of genes (or absolute number if >= 1) to reserve for Bayessian learning.", default = 1024)
     parser.add_option("-s", "--no-deserialize", dest="deserialize", help="Don't deserialize stored gene data.", action="store_false")
     parser.add_option("-v", "--verbosity", dest="verbosity", type="int", default=2, help="0 = Silent, 1 = Hide dynamic elements, 2  = Show everything")
 
@@ -59,17 +59,22 @@ if __name__ == "__main__":
         # FIXME: When dataset is changed, serialized associations need to be regenerated. This is serious bug if we don't seed random
         dataset = [*open(options.dataset).read().splitlines()]
         random.shuffle(dataset)
-        splitIndex = int(options.reserve * len(dataset))
+        assert options.reserve > 0.0
+        if options.reserve < 1.0: # Use ratio
+            splitIndex = int(options.reserve * len(dataset))
+        else:
+            splitIndex = int(options.reserve)
         reserved = set(dataset[:splitIndex])
         dataset = set(dataset[splitIndex:])
 
     associations = GeneAssociations.fromFile(associationsFileName, dataset = dataset)
+    reservedAssociations = GeneAssociations.fromFile(associationsFileName+"_reserved", dataset = reserved)
 
     if options.associationsDump:
         associations.serialize(options.associationsDump)
+        reservedAssociations.serialize(options.associationsDump+"_reserved")
         sys.exit()
 
-    reservedAssociations = GeneAssociations.fromFile(associationsFileName, dataset = reserved)
 
     ontology.setAssociations(associations)
     ontology.setAssociations(reservedAssociations, 'reserved')

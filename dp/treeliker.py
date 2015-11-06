@@ -4,6 +4,7 @@ from pathlib import Path
 from dp.learn import learningTest
 from dp.utils import in_directory, debug
 import dp
+import sys
 
 RESULTS = Path('results')
 NUM_FOLDS = 8
@@ -49,7 +50,6 @@ class TreeLikerWrapper:
         cmd = ["java", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name]
         if self.maxMemory is not None:
             cmd.insert(1, '-Xmx'+self.maxMemory)
-        #_proc = subprocess.Popen(cmd, stdout = subprocess.PIPE, bufsize = 1, universal_newlines=True)
 
         debug("Starting treeliker for "+batchPath.name)
         with in_directory(resultPath), subprocess.Popen(cmd, stdout = subprocess.PIPE, bufsize = 1, universal_newlines=True) as treelikerProc:
@@ -59,12 +59,15 @@ class TreeLikerWrapper:
                 line = '\r%d : %s' % (i, _line.rstrip())
                 if _line.startswith('Fold') and dp.utils.verbosity == 1:
                     debug("%s: %s" % (batchPath.name, _line))
-                elif dp.utils.verbosity == 2:
+                elif dp.utils.verbosity >= 2:
                     debug(line.ljust(prev), end=_line.startswith('Fold'))
                 prev = len(line)
                 if _line.startswith('Processing'):
                     i+=1
-        debug("\nFinished treeliker for "+batchPath.name)
+        if dp.utils.verbosity >= 2:
+            sys.stderr.write("\n")
+
+        debug("Finished treeliker for "+batchPath.name)
 
     def runTermTest(self, term, maxPositive, maxNegative):
         term = self.ontology[term]['name']

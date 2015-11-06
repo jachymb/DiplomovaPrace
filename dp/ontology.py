@@ -10,6 +10,7 @@ from collections import defaultdict
 from itertools import groupby, product
 from pathlib import Path
 from pomegranate import DiscreteDistribution, ConditionalProbabilityTable, State, BayesianNetwork
+import dp.utils
 
 __all__ = ["Onotology"]
 
@@ -18,7 +19,7 @@ class Ontology:
 
     def __init__(self, inputFileName, namespace):
         """Constructor, reads and parses the ontology OBO file."""
-        debug("Reading ontology file %s... " % inputFileName, False)
+        debug("Reading ontology file %s... " % inputFileName)
         self.root = None
         self.namespace = namespace
         ontology = defaultdict(lambda: defaultdict(list))
@@ -53,10 +54,10 @@ class Ontology:
                     ontology[term['id']]['parents'].append(refid)
 
         self.ontology = ontology
-        debug("Done.")
 
         self.associations = None
         self.geneFactory = GeneFactory()
+        debug("Initialized ontology for file %s... " % inputFileName)
 
     def genTranslations(self):
         return {self.ontology[term]['name'] : term for term in self.ontology}
@@ -80,6 +81,9 @@ class Ontology:
                 if term in self.ontology[parent]['children']:
                     self.ontology[parent]['children'].remove(term)
             del self.ontology[term]
+            del self.associations.associations[term]
+            if hasattr(self, 'reserved'):
+                del self.reserved.associations[term]
 
     def jsonExport(self, output = sys.stdout):
         """Export generated onotology in JSON"""
@@ -149,16 +153,26 @@ class Ontology:
     def generateDataset(self, term, output, maxPositive = None, maxNegative = None, associations = None):
         """Generate whole dataset directly usable for learning. The terms are used as learning classes."""
         # FIXME: Remove maxNegative parameter
+        print(len(self.associations.associations))
+        print(term)
+        print(len(self.associations[term]))
         if associations is None:
             associations = self.associations
 
-        debug("Generating dataset for term: %s" % (term))
         totalPos = len(associations[term]) if maxPositive is None else min(maxPositive, len(associations[term]))
         maxNegative = round(totalPos / associations.getRatio(term))
         totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
         total = totalPos + totalNeg
-        debug("We use %d postive and %d negative examples." % (totalPos, totalNeg))
-        import dp.utils
+        print(totalPos, total, totalNeg)
+        print(sorted(self.ontology.keys()))
+        assert associations is self.reserved 
+        # transitiveClosure as nefunguje správně! FIXME
+        s = set()
+        for term in associations.associations:
+            s.update(associations[term])
+        print(s,len(s))
+        assert totalPos == 1024
+        debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (self[term]['name'], totalPos, totalNeg))
         if dp.utils.verbosity >= 2:
             pbar = progressbar.ProgressBar(maxval=total, widgets = (
                 progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
@@ -169,9 +183,7 @@ class Ontology:
         self.generateExamples('~'+term, pbar, output, maxNegative)
         if dp.utils.verbosity >= 2:
             pbar.finish()
-        debug("Finished generating dataset for term: %s" % (term))
-
-        #debug("Finished generating dataset.")
+        debug("Finished generating dataset for term: %s" % (self[term]['name']))
 
     def getTermByName(self, name):
         """Returns human-readable name of the given GO term."""
@@ -183,8 +195,9 @@ class Ontology:
     def completeTest(self, maxPositive, maxNegative, treelikerPath, template, processes = 1):
         bestClassifiers = []
         terms = sorted(self.ontology.keys(), key = lambda x: (-self._termDepth(x), x))[1:3] # This sorting is needed later in bnet learning
-        #treeliker.runValidation(self.reserved)
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
+        treeliker.runValidation(self.reserved)
+        sys.exit()
         def processTerm(term):
             return treeliker.runTermTest(term, maxPositive, maxNegative)
             

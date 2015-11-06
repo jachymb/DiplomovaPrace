@@ -3,9 +3,11 @@ import os
 from contextlib import contextmanager
 import dill
 import multiprocessing
+from datetime import datetime
 
 verbosity = 2
 def debug(s, end=True):
+    s = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' ' + s
     if verbosity > 0:
         print(s, file=sys.stderr, end = "\n" if end else "", flush=True)
 

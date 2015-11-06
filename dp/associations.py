@@ -18,10 +18,11 @@ class GeneAssociations:
     @classmethod
     def fromFile(cls, inputFileName, taxons = None, dataset = None):
         """Decides file type and reads relevant data."""
-        debug("Reading gene associations file %s... " % inputFileName, False)
+        debug("Reading gene associations file %s...%s" % (inputFileName, ("" if dataset is None else " Dataset size is %d." % len(dataset))))
         #open = gzip.open if inputFileName.endswith(".gz") else __builtins__.open
 
-        if inputFileName.endswith('.pickle'):
+        allgenes = set()
+        if inputFileName.endswith('.pickle') or inputFileName.endswith('.pickle_reserved'):
             # Serialized data = much faster
             with open(inputFileName, 'rb') as f:
                 associations, alltaxons = pickle.load(f)
@@ -36,22 +37,30 @@ class GeneAssociations:
                     taxon = {int(x.split(':')[1]) for x in line[12].split('|')}
                     alltaxons.update(taxon)
                     gene = Gene.canonicalName(line[2])
+                    term = line[4]
                     if (taxons is None or taxons.intersection(taxon)) and \
                        (dataset is None or gene in dataset):
-                        associations[line[4]].add(gene)
-        debug("Done.")
+                        associations[term].add(gene)
+                        allgenes.add(gene)
+        debug("Finished reading gene associations file %s... " % inputFileName)
+        if dataset is not None:
+            d = dataset.difference(allgenes)
+            if d:
+                debug("Missing genes: %s!!!" % ", ".join(d))
         return cls(associations, alltaxons, dataset)
 
 
     def transitiveClosure(self):
         """Transitive closure of associations makes genes to be associated to all parents of nodes they are currently associated to."""
-        debug("Calculating transitive closure... ", False)
+        #debug("Calculating transitive closure... ", False)
         def getChildGenes(term):
             for child in self.ontology[term]['children']:
                 self.associations[term].update(getChildGenes(child))
+                print("Updated '%s' from '%s' to total %d genes" % (self.ontology[term]['name'], self.ontology[child]['name'], len(self.associations[term])))
             return self.associations[term]
         getChildGenes(self.ontology.root)
-        debug("Done.")
+        #debug("Done.")
+        print()
 
     def __getitem__(self, item):
         """An instance of this class can be indexed by GO terms."""
@@ -76,11 +85,11 @@ class GeneAssociations:
 
     def serialize(self, fName):
         """Serializes data to a file = faster future use."""
-        debug("Serializing gene associations to file %s..." % fName, False)
+        debug("Serializing gene associations to file %s..." % fName)
         data = (self.associations, self.alltaxons)
         with open(fName, 'wb') as f:
             pickle.dump(data, f)
-        debug("Done.", False)
+        debug("Finished serializing gene associations to file %s..." % fName)
 
     def inverseAssoc(self, gene):
         """Returns terms associated with gene"""
