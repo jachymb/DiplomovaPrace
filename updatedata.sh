@@ -29,5 +29,7 @@ ${RSYNC} -rlpt -v -z --delete --port=$PORT ${SERVER}/data/structures/divided/XML
 cd obo
 wget -N http://www.geneontology.org/ontology/subsets/goslim_{generic,plant,candida,pir,pombe,yeast,aspergillus,metagenomics,virus,chembl}.obo
 
+wget -N http://purl.obolibrary.org/obo/go/go-basic.obo
+wget -N http://purl.obolibrary.org/obo/go.obo
 
 

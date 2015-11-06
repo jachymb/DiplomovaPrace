@@ -2,6 +2,7 @@
 """Remove duplicates in a fasta file"""
 import sys
 from dp.associations import GeneAssociations
+from dp.ontology import Ontology
 from collections import Counter
 seqs = set()
 names = set()
@@ -11,6 +12,9 @@ MIN_SEQ_LEN = 32
 MAX_SEQ_UNK = 0.1
 
 asoc = GeneAssociations.fromFile(sys.argv[2])
+ontology = Ontology(sys.argv[3])
+ontology.setAssociations(asoc)
+asoc.transitiveClosure()
 associated = set()
 for k,v in asoc.associations.items():
     associated.update({g.upper() for g in v})

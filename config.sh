@@ -1,6 +1,7 @@
 ASSOCFILE_SER=data/associations/gene_association.goa_pdb.pickle
 ASSOCFILE=data/associations/gene_association.goa_pdb
-ONTOLOGY=data/obo/goslim_pir.obo
+#ONTOLOGY=data/obo/goslim_pir.obo
+ONTOLOGY=data/obo/go-basic.obo
 DATASET=data/dataset.txt
 TREELIKER=TreeLiker.jar
 BACKGROUND_KNOWLEDGE=data/backround_knowledge.txt
@@ -14,5 +15,6 @@ MEMORY=3584M
 PROCESSES=1
 #Blastdbconfiguration
 DBNAME=seqres
-TASK=blastp#blastp-fast,blastp,blastp-short
+TASK=blastp #blastp-fast,blastp,blastp-short
 VERBOSITY=1
+BLAST_THRESHOLD="10e-50"

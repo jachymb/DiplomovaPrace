@@ -1,13 +1,19 @@
 #!/usr/bin/python
-ALL = 'data/blast/seqres.fasta'
-DISTS  = 'data/blast/blastdist-blastp.txt'
-THRESHOLD = 10e-20
-
 from itertools import groupby, islice 
 from copy import deepcopy
 import random
 import pickle
 import time
+import sys
+
+#ALL = 'data/blast/seqres.fasta'
+#DISTS  = 'data/blast/blastdist-blastp.txt'
+#THRESHOLD = 10e-20
+if len(sys.argv) not in (5,6):
+    sys.stderr.write("Usage: %s FASTAFILE BLAST-DISTANCES THRESHOLD OUTPUT [ITERS]\n")
+    sys.exit(1)
+if len(sys.argv) == 5: sys.argv.append(20)
+ALL, DISTS, THRESHOLD, DATASET, ITERS = sys.argv[1:] 
 
 class Grouper:
     def __init__(self, n=2):
@@ -65,7 +71,7 @@ class Graph:
             return data
             #return cls(*data)
 
-    def dump(self, fname='data/graph.pickle', dfname='data/dataset.txt'):
+    def dump(self, fname='data/graph.pickle', dfname=DATASET):
         print("dumping graph to "+fname)
         with open(fname, 'wb') as graphFile:
             data = (self.graph, self.best)
@@ -94,10 +100,9 @@ class Graph:
 
         return independent
 
-    def randomMaximalIndependentSets(self):
+    def randomMaximalIndependentSets(self, iters):
         bestL = len(self.best)
-        while True:
-        #for x in range(10):
+        for x in range(iters):
             try:
                 self.singleMaximalIndependentSet()
             except KeyboardInterrupt:
@@ -108,5 +113,5 @@ class Graph:
 
 graph = Graph()
 #graph = Graph.load()
-graph.randomMaximalIndependentSets()
+graph.randomMaximalIndependentSets(ITERS)
 

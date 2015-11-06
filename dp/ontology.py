@@ -17,7 +17,7 @@ __all__ = ["Onotology"]
 class Ontology:
     """ Class representing the Gene Onotology graph."""
 
-    def __init__(self, inputFileName, namespace):
+    def __init__(self, inputFileName, namespace = 'molecular_function'):
         """Constructor, reads and parses the ontology OBO file."""
         debug("Reading ontology file %s... " % inputFileName)
         self.root = None
@@ -84,6 +84,7 @@ class Ontology:
             del self.associations.associations[term]
             if hasattr(self, 'reserved'):
                 del self.reserved.associations[term]
+        debug("Deleted terms with not enough associations. Left %d terms." % len(self.ontology))
 
     def jsonExport(self, output = sys.stdout):
         """Export generated onotology in JSON"""
@@ -164,13 +165,16 @@ class Ontology:
         totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
         total = totalPos + totalNeg
         print(totalPos, total, totalNeg)
-        print(sorted(self.ontology.keys()))
-        assert associations is self.reserved 
         # transitiveClosure as nefunguje správně! FIXME
         s = set()
         for term in associations.associations:
             s.update(associations[term])
-        print(s,len(s))
+        r = associations[self.root]
+        d1 = s.difference(r)
+        d2 = r.difference(s)
+        assert d2 == set()
+        for g in d1:
+            print(g, sorted((self[a]['name'] for a in associations.inverseAssoc(g))))
         assert totalPos == 1024
         debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (self[term]['name'], totalPos, totalNeg))
         if dp.utils.verbosity >= 2:

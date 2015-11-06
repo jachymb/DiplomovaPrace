@@ -50,7 +50,7 @@ if __name__ == "__main__":
         with open(options.backgroundKnowledge) as bk:
             Gene.backgroundKnowledge = bk.read().splitlines()
 
-    ontology = Ontology(oboFileName, 'molecular_function')
+    ontology = Ontology(oboFileName)
     ontology.geneFactory.deserialize = True if options.deserialize is None else False
     #associations = GeneAssociations(associationsFileName, TAXONS_SACCHAROMYCES_CEREVISIAE)
 
@@ -69,18 +69,17 @@ if __name__ == "__main__":
 
     associations = GeneAssociations.fromFile(associationsFileName, dataset = dataset)
     reservedAssociations = GeneAssociations.fromFile(associationsFileName+"_reserved", dataset = reserved)
-
-    if options.associationsDump:
-        associations.serialize(options.associationsDump)
-        reservedAssociations.serialize(options.associationsDump+"_reserved")
-        sys.exit()
-
-
     ontology.setAssociations(associations)
     ontology.setAssociations(reservedAssociations, 'reserved')
     associations.transitiveClosure()
     reservedAssociations.transitiveClosure()
     ontology.deleteSmallTerms(options.lb)
+ 
+    if options.associationsDump:
+        associations.serialize(options.associationsDump)
+        reservedAssociations.serialize(options.associationsDump+"_reserved")
+        sys.exit()
+
     #ontology._toBayessNet(None,None)
     TreeLikerWrapper.maxMemory = options.memory
 

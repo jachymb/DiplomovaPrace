@@ -1,21 +1,27 @@
 #!/bin/sh
-# make a copy of original data
 source ./config.sh
+export PYTHONPATH="$PWD"
+
+# make a copy of original data and filter the data
 mydir="data/blast"
 mkdir -p $mydir
-
-./rmfastadup.py data/derived/pdb_seqres.txt "$ASSOCFILE" > $mydir/${DBNAME}.fasta
-
-cd $mydir
+fasta=${DBNAME}.fasta
+dp/rmfastadup.py data/derived/pdb_seqres.txt "$ASSOCFILE" "$ONTOLOGY"> "$mydir/$fasta"
 
 # Remove old database
+cd "$mydir"
 rm ${DBNAME}{.phr,.pin,.psq,.psi,.psd,.pog}
 
 # Re-create database
-makeblastdb -in ${DBNAME}.fasta -dbtype prot -parse_seqids -out $DBNAME
+makeblastdb -in "$fasta" -dbtype prot -parse_seqids -out "$DBNAME"
 
 # Compute blast distances and format output
-blastp -db $DBNAME -query ${DBNAME}.fasta -evalue 1.0 -task $TASK -outfmt '10 qseqid sseqid evalue' \
+dists=blastdist-${TASK}.txt
+blastp -db "$DBNAME" -query "$fasta" -evalue 1.0 -task $TASK -outfmt '10 qseqid sseqid evalue' \
   | awk -F,  '{if(x!=$1) {delete list; x=$1; print x;} if($1 != $2 && !($2 in list)) {list[$2];print $2,$3;} }' \
-  | tee blastdist-${TASK}.txt \
+  | tee "$dists" \
   | egrep '^[^ ]*$'
+
+# Generate new independent datasets
+cd $OLDPWD
+dp/maximumIndependentSet.py "$mydir/$fasta" "$dists" "$BLAST_THRESHOLD" "$DATASET"

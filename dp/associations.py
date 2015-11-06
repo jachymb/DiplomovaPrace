@@ -56,11 +56,13 @@ class GeneAssociations:
         def getChildGenes(term):
             for child in self.ontology[term]['children']:
                 self.associations[term].update(getChildGenes(child))
-                print("Updated '%s' from '%s' to total %d genes" % (self.ontology[term]['name'], self.ontology[child]['name'], len(self.associations[term])))
             return self.associations[term]
         getChildGenes(self.ontology.root)
-        #debug("Done.")
-        print()
+
+        # Remove from associations terms not in ontology
+        termsToDelete = [term for term in self.associations if term not in self.ontology.ontology]
+        for term in termsToDelete:
+            del self.associations[term]
 
     def __getitem__(self, item):
         """An instance of this class can be indexed by GO terms."""
