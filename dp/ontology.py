@@ -4,11 +4,12 @@ import random
 import traceback
 import json
 from dp.gene import GeneFactory
-from dp.utils import debug
+from dp.utils import debug, parallel_map_dill
 from dp.treeliker import TreeLikerWrapper
 from collections import defaultdict
-from itertools import groupby
+from itertools import groupby, product
 from pathlib import Path
+from pomegranate import DiscreteDistribution, ConditionalProbabilityTable, State, BayesianNetwork
 
 __all__ = ["Onotology"]
 
@@ -127,7 +128,8 @@ class Ontology:
                 e = '"%s" %s' % (term, ", ".join(gene.logicalRepresentation()))
                 assert e != ''
                 print(e, file=output, flush=True)
-                pbar.update(pbar.currval + 1)
+                if pbar is not None:
+                    pbar.update(pbar.currval + 1)
             except Exception as exc:
                 traceback.print_exc()
 
@@ -144,23 +146,30 @@ class Ontology:
             #    if future.exception() is not None:
             #        debug("Exception: " + future.exception())
 
-    def generateDataset(self, term, output, maxPositive = None, maxNegative = None):
+    def generateDataset(self, term, output, maxPositive = None, maxNegative = None, associations = None):
         """Generate whole dataset directly usable for learning. The terms are used as learning classes."""
         # FIXME: Remove maxNegative parameter
+        if associations is None:
+            associations = self.associations
+
         debug("Generating dataset for term: %s" % (term))
-        totalPos = len(self.associations[term]) if maxPositive is None else min(maxPositive, len(self.associations[term]))
-        maxNegative = round(totalPos / self.associations.getRatio(term))
-        totalNeg = len(self.associations[term]) if maxPositive is None else min(maxNegative, len(self.associations['~'+term]))
+        totalPos = len(associations[term]) if maxPositive is None else min(maxPositive, len(associations[term]))
+        maxNegative = round(totalPos / associations.getRatio(term))
+        totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
         total = totalPos + totalNeg
         debug("We use %d postive and %d negative examples." % (totalPos, totalNeg))
-        pbar = progressbar.ProgressBar(maxval=total, widgets = (
-            progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
-
-        sampleCounts = []
-        pbar.start()
+        import dp.utils
+        if dp.utils.verbosity >= 2:
+            pbar = progressbar.ProgressBar(maxval=total, widgets = (
+                progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
+            pbar.start()
+        else:
+            pbar = None
         self.generateExamples(    term, pbar, output, maxPositive)
         self.generateExamples('~'+term, pbar, output, maxNegative)
-        pbar.finish()
+        if dp.utils.verbosity >= 2:
+            pbar.finish()
+        debug("Finished generating dataset for term: %s" % (term))
 
         #debug("Finished generating dataset.")
 
@@ -171,23 +180,53 @@ class Ontology:
                 return k
         raise KeyError('Name %s is not in the ontology!' % name)
 
-    def completeTest(self, maxPositive, maxNegative, treelikerPath, template):
+    def completeTest(self, maxPositive, maxNegative, treelikerPath, template, processes = 1):
         bestClassifiers = []
-        terms = sorted(self.ontology.keys())[1:3]
+        terms = sorted(self.ontology.keys(), key = lambda x: (-self._termDepth(x), x))[1:3] # This sorting is needed later in bnet learning
+        #treeliker.runValidation(self.reserved)
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
-        for term in terms:
-            if term == self.root:
-                continue
+        def processTerm(term):
+            return treeliker.runTermTest(term, maxPositive, maxNegative)
+            
+        parallel_map_dill(processes, processTerm, terms)
 
-            best = treeliker.runTermTest(term, maxPositive, maxNegative)
-            bestClassifiers.append(best)
-            print("Best:",best)
+        #for term in terms:
+        #    if term == self.root:
+        #        continue
+
+        #    best = treeliker.runTermTest(term, maxPositive, maxNegative)
+        #    bestClassifiers.append(best)
+        #    print("Best:",best)
             
         #bnet = self._toBayessNet(bestClassifiers, terms)
 
     def _toBayessNet(self, classifiers, terms):
         assert hasattr(self, 'reserved')
 
+        bnet = BayesianNetwork(self.ontology[self.root]['name'])
+        hidden_nodes = {}
+        observed_nodes = {}
+        classes = [('1','0')]
+        for term in terms:
+            children = sorted(self.ontology[term]['children'])
+            cpd_hidden = [[*x, 1.0] for x in product(*classes*(len(children)+2))]
+            node_hidden = ConditionalProbabilityTable(cpd_hidden, [hidden_nodes[child] for child in children])
+
+            cpd_observed = [[*x, 1.0] for x in product(*classes*2)]
+            node_observed = ConditionalProbabilityTable(cpd_observed, [node_hidden])
+            hidden_nodes[term] = node_hidden
+            observed_nodes[term] = node_observed
+            print(term, "observed:")
+            print(node_observed)
+            print(term, "hidden:")
+            print(node_hidden)
+                
+            #state = State(node, name = self.ontology[term]['name'])
+            #bnet.add_state(state)
+
+
+
+        return
         genes = [*self.reserved.dataset]
         #terms = [*self.ontology.keys()]
         labels = [
