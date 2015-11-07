@@ -43,7 +43,8 @@ MAPPING = {
         'Z' : 'glx', # Glutamine or glutamic acid
         }
 
-IGNORE = [None, 'sec', 'pyl']
+IGNORE = (None, 'sec', 'pyl')
+#IGNORE = (None,)
 
 class GeneFactory:
     openGenes = []
@@ -213,8 +214,8 @@ class Gene:
     def logicalRepresentation(self, postfix = None):
         """Generates the logical representation usable for learning."""
 
-        #results = [("proteinName", (self.name,))] # predicate head, parameters
-        results = []
+        results = [("proteinName", (self.name,))] # predicate head, parameters
+        #results = []
 
         if postfix is None:
             postfix = self.name

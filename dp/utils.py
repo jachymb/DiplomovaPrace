@@ -4,6 +4,15 @@ from contextlib import contextmanager
 import dill
 import multiprocessing
 from datetime import datetime
+from pathlib import Path
+
+RESULTS = Path('results') # I don't like this to in configuration so it's here
+def getTermPath(term):
+    # Expects term name, not GO id
+    path = RESULTS / term.replace(' ','_')
+    if not path.is_dir():
+        path.mkdir()
+    return path
 
 verbosity = 2
 def debug(s, end=True):

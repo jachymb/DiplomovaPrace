@@ -1,6 +1,7 @@
 __all__ = ["GeneAssociations"]
 
 import pickle
+import random
 from dp.gene import Gene
 from dp.utils import debug
 from collections import defaultdict
@@ -21,7 +22,6 @@ class GeneAssociations:
         debug("Reading gene associations file %s...%s" % (inputFileName, ("" if dataset is None else " Dataset size is %d." % len(dataset))))
         #open = gzip.open if inputFileName.endswith(".gz") else __builtins__.open
 
-        allgenes = set()
         if inputFileName.endswith('.pickle') or inputFileName.endswith('.pickle_reserved'):
             # Serialized data = much faster
             with open(inputFileName, 'rb') as f:
@@ -41,7 +41,6 @@ class GeneAssociations:
                     if (taxons is None or taxons.intersection(taxon)) and \
                        (dataset is None or gene in dataset):
                         associations[term].add(gene)
-                        allgenes.add(gene)
         debug("Finished reading gene associations file %s... " % inputFileName)
         #if dataset is not None:
         #    d = dataset.difference(allgenes)
@@ -103,3 +102,25 @@ class GeneAssociations:
     def getRatio(self, term):
         """Returns relative number of genes associated with terms compared to all genes"""
         return len(self[term]) / len(self.associations[self.ontology.root])
+
+    def delgene(self, gene):
+        terms = self.inverseAssoc(gene)
+        for t in terms:
+            self.associations[t].remove(gene)
+
+    def shrink(self, toSize, minTermAssociations):
+        random.seed(0)
+        debug("Shinking associations")
+        allgenes = sorted(self.associations[self.ontology.root])
+        size = len(allgenes)
+        while size > toSize:
+            todel = random.choice(allgenes)
+            allgenes.remove(todel)
+            self.delgene(todel)
+            self.ontology.deleteSmallTerms(minTermAssociations)
+
+            allgenes = sorted(self.associations[self.ontology.root])
+            size = len(allgenes)
+
+        debug("Finished shinking associations. Left with %d genes." % (size))
+        debug(" ,".join(allgenes))

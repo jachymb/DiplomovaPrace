@@ -3,8 +3,10 @@ import sys
 import random
 import traceback
 import json
+import subprocess
+from contextlib import ExitStack
 from dp.gene import GeneFactory
-from dp.utils import debug, parallel_map_dill
+from dp.utils import debug, parallel_map_dill, getTermPath
 from dp.treeliker import TreeLikerWrapper
 from collections import defaultdict
 from itertools import groupby, product
@@ -23,7 +25,8 @@ class Ontology:
         self.root = None
         self.namespace = namespace
         ontology = defaultdict(lambda: defaultdict(list))
-        with open(inputFileName) as go:
+        self.inputFileName = Path(inputFileName)
+        with self.inputFileName.open() as go:
             terms = groupby(go.read().splitlines(), lambda x: x != '')
 
             for b, term in terms:
@@ -47,7 +50,7 @@ class Ontology:
                     self.root = term['id']
 
                 # Save the term to ontology
-                ontology[term['id']]['name'] = term['name']
+                ontology[term['id']]['name'] = term['name'].replace('_', ' ') # FIXME KDYBY BLBLO, ODEBRAT replace
                 for ref in term['is_a']:
                     refid, refname = ref.split(' ! ')
                     ontology[refid]['children'].append(term['id'])
@@ -66,6 +69,7 @@ class Ontology:
         associations.translations = self.genTranslations()
         associations.ontology = self
         self.__setattr__(attrname, associations)
+        associations.transitiveClosure()
 
     def _termDepth(self, term):
         #if term == self.root: return 0
@@ -76,33 +80,62 @@ class Ontology:
     def deleteSmallTerms(self, lb):
         """ Delete terms which don't have enough associations.
         Do not call this prior to calling transitiveClosure()"""
-        notEnough = [term for term in self.ontology if len(self.associations[term]) < lb]
-        notEnough.sort(key = lambda x: -self._termDepth(x)) # Yes, it's necessary.
+        notEnough = self.termsByDepth(terms = (term for term in self.ontology if len(self.associations[term]) < lb))
         for term in notEnough:
             for parent in self.ontology[term]['parents']:
                 if term in self.ontology[parent]['children']:
                     self.ontology[parent]['children'].remove(term)
             del self.ontology[term]
-            del self.associations.associations[term]
-            if hasattr(self, 'reserved'):
+            if term in self.associations.associations:
+                del self.associations.associations[term]
+            if hasattr(self, 'reserved') and term in self.reserved.associations:
                 del self.reserved.associations[term]
-        debug("Deleted terms with not enough associations. Left %d terms." % len(self.ontology))
+        #debug("Deleted %d terms with not enough associations. Left %d terms." % (len(notEnough), len(self.ontology)))
 
-    def jsonExport(self, output = sys.stdout):
+    def jsonExport(self):
         """Export generated onotology in JSON"""
-        json.dump(self.ontology, output)
+        with (self.inputFileName.parent / (self.inputFileName.stem + '.json')).open('w') as output:
+            json.dump(self.ontology, output)
 
-    def dotExport(self, direction = "parents", output = sys.stdout):
+    def dotExport(self):
         """ Export as a graph to the DOT format for graphical presentation."""
-        print("digraph ontology {", file=output)
-        def nodename(t): return t.replace(":", "")
-        for term, props in self.ontology.items():
-            print('%s [label="%s"]' % (nodename(term), props["name"]), file=output)
+        debug("Exporting ontology to dot.")
+        for direction in ("parents", "children"):
+            dotFile = self.inputFileName.parent / (self.inputFileName.stem +"_"+direction+ '.dot')
+            with dotFile.open('w') as output:
+                print("digraph ontology {", file=output)
+                def nodename(t): return t.replace(":", "")
+                for term, props in self.ontology.items():
+                    name = props['name']
+                    if ',' in name:
+                        name = name.replace(', ', r',\n')
+                    else:
+                        name = name.replace('binding', r'\nbinding').replace('activity',r'\nactivity').replace(r' \n',r'\n')
+                    print('%s [label="%s"]' % (nodename(term), name), file=output)
 
-        for term, props in self.ontology.items():
-            for related in props[direction]:
-                print('%s -> %s' % (nodename(term), nodename(related)), file=output)
-        print("}", file=output)
+                for term, props in self.ontology.items():
+                    for related in props[direction]:
+                        print('%s -> %s' % (nodename(term), nodename(related)), file=output)
+                print("}", file=output)
+            for fmt in ('ps', 'png'):
+                outFile = dotFile.parent / (dotFile.stem + '.' + fmt)
+                try:
+                    subprocess.Popen(['dot', '-T'+fmt, str(dotFile), '-o', str(outFile)]) 
+                except IOError:
+                    pass
+        debug("Finished dot export.")
+
+    def overView(self):
+        terms = self.termsByDepth(False)
+        total = len(self.associations[self.root])
+        for term in terms:
+            name = self.ontology[term]['name']
+            asoc = len(self.associations[term])
+            ratio = asoc / total
+            children = ", ".join((repr(self[ch]['name']) for ch in self.ontology[term]['children']))
+            depth = self._termDepth(term)
+
+            print("%s\t%d\t%.2f\t%d\t%s\t%s"% (term, asoc, ratio, depth, name, children), file=sys.stderr)
 
     def __iter__(self):
         """Iterate over the underlying dict."""
@@ -127,6 +160,31 @@ class Ontology:
                 #print(term, self.ontology[term]['name'], numTerms, "->", children)
                 print(term, self.ontology[term]['name'], numTerms)
 
+    def termsByDepth(self, leavesFirst = True, terms = None):
+        if terms is None:
+            terms = self.ontology.keys()
+        m = -1 if leavesFirst else 1
+        return sorted(terms, key = lambda x: (m*self._termDepth(x), x))
+
+    def generateExamplesUnified(self):
+        terms = self.termsByDepth(False)
+        genes = sorted(self.associations[self.root])
+        rootname = self.ontology[self.root]['name']
+        with ExitStack() as stack: # Closes all files when exited
+            files = [(term, stack.enter_context((getTermPath(term) / 'dataset.txt').open('w')))
+                    for term
+                    in (self[t]['name'] for t in self.ontology.keys())
+                    if term != rootname]
+            for i, geneName in enumerate(genes):
+                #debug("%d. Writing gene %s." % (i, geneName))
+                gene = self.geneFactory.getGene(geneName)
+                repg = ", ".join(gene.logicalRepresentation())
+                for term, output in files:
+                    if geneName not in self.associations[term]:
+                        term = '~'+term
+                    e = '"%s" %s' % (term, repg)
+                    print(e, file=output)
+
     def generateExamples(self, term, output, associations, maxAssociations = None):
         """Generates examples from genes associated with the term in logical reprentation in the pseudo-prolog syntax. """
         def getRecord(geneName):
@@ -145,7 +203,7 @@ class Ontology:
         genes = genes[:maxAssociations]
         for i,gene in enumerate(genes):
             getRecord(gene)
-            debug("%s %d/%d" %(self[term]['name'] if not term.startswith('~') else term,i,maxAssociations))
+            #debug("%s %d/%d" %(self[term]['name'] if not term.startswith('~') else term,i,maxAssociations))
         #with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             #executor.map(getRecord, genes)
             #for future in concurrent.futures.as_completed(s):
@@ -184,13 +242,14 @@ class Ontology:
                 return k
         raise KeyError('Name %s is not in the ontology!' % name)
 
-    def completeTest(self, maxPositive, maxNegative, treelikerPath, template, processes = 1):
+    def completeTest(self, treelikerPath, template, processes = 1):
+        self.generateExamplesUnified()
         bestClassifiers = []
-        terms = sorted(self.ontology.keys(), key = lambda x: (-self._termDepth(x), x))[1:3] # This sorting is needed later in bnet learning
+        terms = self.termsByDepth() # This sorting is needed later in bnet learning
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
-        treeliker.runValidation(self.reserved)
+        #treeliker.runValidation(self.reserved)
         def processTerm(term):
-            return treeliker.runTermTest(term, maxPositive, maxNegative)
+            return treeliker.runTermTest(term)
             
         parallel_map_dill(processes, processTerm, terms)
 

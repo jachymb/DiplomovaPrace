@@ -123,20 +123,20 @@ def learningTest(cvdir):
                 clf.name = name
                 classifiers.append(clf)
 
-                y_score = clf.decision_function(X_test)
-                precision, recall, _ = precision_recall_curve(y_test, y_score)
+                #y_score = clf.decision_function(X_test)
+                #precision, recall, _ = precision_recall_curve(y_test, y_score)
                 #Plot Precision-Recall curve
-                plt.clf()
-                plt.plot(recall, precision, label='Precision-Recall curve')
-                plt.plot([1,0], [0,1], label='id')
-                plt.xlabel('Recall')
-                plt.ylabel('Precision')
-                plt.ylim([0.0, 1.05])
-                plt.xlim([0.0, 1.0])
-                plt.title('Precision-Recall '+name)
-                plt.legend(loc="lower left")
-                plt.show()
-                break
+                #plt.clf()
+                #plt.plot(recall, precision, label='Precision-Recall curve')
+                #plt.plot([1,0], [0,1], label='id')
+                #plt.xlabel('Recall')
+                #plt.ylabel('Precision')
+                #plt.ylim([0.0, 1.05])
+                #plt.xlim([0.0, 1.0])
+                #plt.title('Precision-Recall '+name)
+                #plt.legend(loc="lower left")
+                #plt.show()
+                #break
 
                 #import matplotlib.pyplot as plt
                 #target_names = ["pos","neg"]

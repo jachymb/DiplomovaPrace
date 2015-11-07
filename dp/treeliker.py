@@ -2,11 +2,10 @@ import subprocess
 import os
 from pathlib import Path
 from dp.learn import learningTest
-from dp.utils import in_directory, debug
+from dp.utils import in_directory, debug, RESULTS, getTermPath
 import dp
 import sys
 
-RESULTS = Path('results')
 NUM_FOLDS = 8
 
 __all__ = ["TreeLikerWrapper"]
@@ -51,7 +50,7 @@ class TreeLikerWrapper:
         if self.maxMemory is not None:
             cmd.insert(1, '-Xmx'+self.maxMemory)
 
-        debug("Starting treeliker for "+batchPath.name)
+        debug("Starting treeliker for "+resultPath.name)
         with in_directory(resultPath), subprocess.Popen(cmd, stdout = subprocess.PIPE, bufsize = 1, universal_newlines=True) as treelikerProc:
             prev = 0
             i = 1
@@ -69,17 +68,13 @@ class TreeLikerWrapper:
 
         debug("Finished treeliker for "+batchPath.name)
 
-    def runTermTest(self, term, maxPositive, maxNegative):
+    def runTermTest(self, term):
         term = self.ontology[term]['name']
 
-        resultPath = RESULTS / term.replace(' ','_')
-        if not resultPath.is_dir():
-            resultPath.mkdir()
+        resultPath = getTermPath(term)
         batchPath = resultPath / 'batch.treeliker'
 
         datasetPath = resultPath / 'dataset.txt'
-        with datasetPath.open('w') as output:
-            self.ontology.generateDataset(term, output, maxPositive, maxNegative)
 
         batchFile = "set(algorithm, relf_grounding_counting)\n" \
                     "set(output_type, cv)\n" \
