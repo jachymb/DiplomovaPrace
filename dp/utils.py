@@ -11,7 +11,6 @@ def debug(s, end=True):
     if verbosity > 0:
         print(s, file=sys.stderr, end = "\n" if end else "", flush=True)
 
-
 @contextmanager
 def in_directory(path):
     pwd = os.path.abspath(os.curdir)
@@ -30,7 +29,6 @@ def pack_function_for_map(target_function, items, *args, **kwargs):
     dumped_function = dill.dumps(target_function)
     dumped_items = [(dumped_function, item, args, kwargs) for item in items]
     return apply_packed_function_for_map, dumped_items
-
 
 def parallel_map_dill(workers, function, iterable):
     pool = multiprocessing.Pool(processes=workers)

@@ -127,25 +127,25 @@ class Ontology:
                 #print(term, self.ontology[term]['name'], numTerms, "->", children)
                 print(term, self.ontology[term]['name'], numTerms)
 
-    def generateExamples(self, term, output, maxAssociations = None):
+    def generateExamples(self, term, output, associations, maxAssociations = None):
         """Generates examples from genes associated with the term in logical reprentation in the pseudo-prolog syntax. """
         def getRecord(geneName):
             try:
                 gene = self.geneFactory.getGene(geneName)
                 e = '"%s" %s' % (term, ", ".join(gene.logicalRepresentation()))
-                assert e != ''
                 print(e, file=output, flush=True)
                 #if pbar is not None:
                 #    pbar.update(pbar.currval + 1)
             except Exception as exc:
                 traceback.print_exc()
 
-        genes = sorted(self.associations[term])
+        genes = sorted(associations[term])
         genes = list(genes)
         random.shuffle(genes)
         genes = genes[:maxAssociations]
-        for gene in genes:
+        for i,gene in enumerate(genes):
             getRecord(gene)
+            debug("%s %d/%d" %(self[term]['name'],i,maxAssociations))
         #with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             #executor.map(getRecord, genes)
             #for future in concurrent.futures.as_completed(s):
@@ -156,9 +156,6 @@ class Ontology:
     def generateDataset(self, term, output, maxPositive = None, maxNegative = None, associations = None):
         """Generate whole dataset directly usable for learning. The terms are used as learning classes."""
         # FIXME: Remove maxNegative parameter
-        print(len(self.associations.associations))
-        print(term)
-        print(len(self.associations[term]))
         if associations is None:
             associations = self.associations
 
@@ -173,8 +170,8 @@ class Ontology:
             #pbar.start()
         #else:
             #pbar = None
-        self.generateExamples(    term, output, maxPositive)
-        self.generateExamples('~'+term, output, maxNegative)
+        self.generateExamples(    term, output, associations, maxPositive)
+        self.generateExamples('~'+term, output, associations, maxNegative)
         #if dp.utils.verbosity >= 2:
         #    pbar.finish()
         debug("Finished generating dataset for term: %s" % (self[term]['name']))

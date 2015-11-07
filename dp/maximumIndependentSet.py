@@ -5,15 +5,11 @@ import random
 import pickle
 import time
 import sys
+import os
 
 #ALL = 'data/blast/seqres.fasta'
 #DISTS  = 'data/blast/blastdist-blastp.txt'
 #THRESHOLD = 10e-20
-if len(sys.argv) not in (5,6):
-    sys.stderr.write("Usage: %s FASTAFILE BLAST-DISTANCES THRESHOLD OUTPUT [ITERS]\n")
-    sys.exit(1)
-if len(sys.argv) == 5: sys.argv.append(20)
-ALL, DISTS, THRESHOLD, DATASET, ITERS = sys.argv[1:] 
 
 class Grouper:
     def __init__(self, n=2):
@@ -27,19 +23,19 @@ class Grouper:
         return self.g
 
 class Graph:
-    def __init__(self, graph = None, best = set()):
+    def __init__(self, threshold, dfname, distsFile, all, graph = None, best = set()):
         self.graph = graph
         self.best = best
         if self.graph is None:
             self.graph = {}
-            print("reading file "+ALL)
-            with open(ALL) as seqres:
+            print("reading file "+all)
+            with open(all) as seqres:
                 for _,(desc, seq) in groupby(seqres, key=Grouper()):
                     name = desc.split(" ")[0][1:]
                     self.graph[name] = set()
 
-            print("reading file "+DISTS)
-            with open(DISTS) as dists:
+            print("reading file "+distsFile)
+            with open(distsFile) as dists:
                 key = None
                 for line in dists:
                     line = line.strip().split(' ')
@@ -47,11 +43,12 @@ class Graph:
                         key, = line
                     else:
                         dist = float(line[1])
-                        if dist < THRESHOLD and key in self.graph:
+                        if dist < threshold and key in self.graph:
                             self.graph[key].add(line[0])
 
             self.checkEdges()
 
+        self.dfname = dfname
         print("graph initialised")
 
     def checkEdges(self):
@@ -71,12 +68,12 @@ class Graph:
             return data
             #return cls(*data)
 
-    def dump(self, fname='data/graph.pickle', dfname=DATASET):
+    def dump(self, fname='data/graph.pickle'):
         print("dumping graph to "+fname)
         with open(fname, 'wb') as graphFile:
             data = (self.graph, self.best)
             pickle.dump(graph, graphFile)
-        with open(dfname, 'w') as dataset:
+        with open(self.dfname, 'w') as dataset:
             dataset.write("\n".join(sorted(self.best)))
 
     def singleMaximalIndependentSet(self):
@@ -111,7 +108,15 @@ class Graph:
     def bestRatio(self):
         return len(self.best), len(self.graph)
 
-graph = Graph()
-#graph = Graph.load()
-graph.randomMaximalIndependentSets(ITERS)
+
+if __name__ == "__main__":
+    if len(sys.argv) not in (5,6):
+        sys.stderr.write("Usage: %s FASTAFILE BLAST-DISTANCES THRESHOLD OUTPUT [ITERS]\n")
+        sys.exit(1)
+    if len(sys.argv) == 5: sys.argv.append(20)
+    ALL, DISTS, THRESHOLD, DATASET, ITERS = sys.argv[1:] 
+
+    graph = Graph(float(THRESHOLD), DATASET, DISTS, ALL)
+    #graph = Graph.load()
+    graph.randomMaximalIndependentSets(ITERS)
 

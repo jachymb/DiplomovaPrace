@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser.add_option("-b", "--background-knowledge", dest="backgroundKnowledge", help="File with background knowledge appended to each gene.")
     parser.add_option("-d", "--dataset", dest="dataset", help="Set of genes to use.")
     parser.add_option("-e", "--memory", dest="memory", help="Maximum TreeLiker memory.")
+    parser.add_option("-i", "--recalculate-distances", dest="recalcDists", help="Reacalculate distances (if max distance or discreatisation were changed. Coordinates are used the same.)", action="store_true")
     parser.add_option("-l", "--min-associations", dest="lb", type="int", help="Minimum number of posive examples. (If there are not enough, term is ignores)", default=1)
     parser.add_option("-m", "--max-positive", dest="max_positive", type="int", help="Maximum positive samples.")
     parser.add_option("-n", "--max-negative", dest="max_negative", type="int", help="Maximum negative samples.")
@@ -82,5 +83,6 @@ if __name__ == "__main__":
 
     #ontology._toBayessNet(None,None)
     TreeLikerWrapper.maxMemory = options.memory
+    Gene.recalculateDists = bool(options.recalcDists)
 
     ontology.completeTest(options.max_positive, options.max_negative, options.treeliker, options.template, options.processes)

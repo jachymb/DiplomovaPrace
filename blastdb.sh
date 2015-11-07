@@ -24,4 +24,4 @@ blastp -db "$DBNAME" -query "$fasta" -evalue 1.0 -task $TASK -outfmt '10 qseqid 
 
 # Generate new independent datasets
 cd $OLDPWD
-dp/maximumIndependentSet.py "$mydir/$fasta" "$dists" "$BLAST_THRESHOLD" "$DATASET"
+dp/maximumIndependentSet.py "$mydir/$fasta" "$mydir/$dists" "$BLAST_THRESHOLD" "$DATASET"
