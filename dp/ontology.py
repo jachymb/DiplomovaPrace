@@ -1,5 +1,5 @@
 import sys
-import progressbar
+#import progressbar
 import random
 import traceback
 import json
@@ -68,8 +68,10 @@ class Ontology:
         self.__setattr__(attrname, associations)
 
     def _termDepth(self, term):
-        if term == self.root: return 0
-        return 1 + min(map(self._termDepth, self.ontology[term]['parents']))
+        #if term == self.root: return 0
+        parents = self.ontology[term]['parents']
+        if len(parents) == 0: return 0
+        return 1 + min(map(self._termDepth, parents))
 
     def deleteSmallTerms(self, lb):
         """ Delete terms which don't have enough associations.
@@ -125,7 +127,7 @@ class Ontology:
                 #print(term, self.ontology[term]['name'], numTerms, "->", children)
                 print(term, self.ontology[term]['name'], numTerms)
 
-    def generateExamples(self, term, pbar, output, maxAssociations = None):
+    def generateExamples(self, term, output, maxAssociations = None):
         """Generates examples from genes associated with the term in logical reprentation in the pseudo-prolog syntax. """
         def getRecord(geneName):
             try:
@@ -133,8 +135,8 @@ class Ontology:
                 e = '"%s" %s' % (term, ", ".join(gene.logicalRepresentation()))
                 assert e != ''
                 print(e, file=output, flush=True)
-                if pbar is not None:
-                    pbar.update(pbar.currval + 1)
+                #if pbar is not None:
+                #    pbar.update(pbar.currval + 1)
             except Exception as exc:
                 traceback.print_exc()
 
@@ -164,29 +166,17 @@ class Ontology:
         maxNegative = round(totalPos / associations.getRatio(term))
         totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
         total = totalPos + totalNeg
-        print(totalPos, total, totalNeg)
-        # transitiveClosure as nefunguje správně! FIXME
-        s = set()
-        for term in associations.associations:
-            s.update(associations[term])
-        r = associations[self.root]
-        d1 = s.difference(r)
-        d2 = r.difference(s)
-        assert d2 == set()
-        for g in d1:
-            print(g, sorted((self[a]['name'] for a in associations.inverseAssoc(g))))
-        assert totalPos == 1024
         debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (self[term]['name'], totalPos, totalNeg))
-        if dp.utils.verbosity >= 2:
-            pbar = progressbar.ProgressBar(maxval=total, widgets = (
-                progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
-            pbar.start()
-        else:
-            pbar = None
-        self.generateExamples(    term, pbar, output, maxPositive)
-        self.generateExamples('~'+term, pbar, output, maxNegative)
-        if dp.utils.verbosity >= 2:
-            pbar.finish()
+        #if dp.utils.verbosity >= 2:
+            #pbar = progressbar.ProgressBar(maxval=total, widgets = (
+            #    progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
+            #pbar.start()
+        #else:
+            #pbar = None
+        self.generateExamples(    term, output, maxPositive)
+        self.generateExamples('~'+term, output, maxNegative)
+        #if dp.utils.verbosity >= 2:
+        #    pbar.finish()
         debug("Finished generating dataset for term: %s" % (self[term]['name']))
 
     def getTermByName(self, name):
