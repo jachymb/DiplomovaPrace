@@ -145,7 +145,7 @@ class Ontology:
         genes = genes[:maxAssociations]
         for i,gene in enumerate(genes):
             getRecord(gene)
-            debug("%s %d/%d" %(self[term]['name'],i,maxAssociations))
+            debug("%s %d/%d" %(self[term]['name'] if not term.startswith('~') else term,i,maxAssociations))
         #with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             #executor.map(getRecord, genes)
             #for future in concurrent.futures.as_completed(s):
@@ -163,7 +163,8 @@ class Ontology:
         maxNegative = round(totalPos / associations.getRatio(term))
         totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
         total = totalPos + totalNeg
-        debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (self[term]['name'], totalPos, totalNeg))
+        termname = self[term]['name'] if not term.startswith('~') else termname
+        debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (termname, totalPos, totalNeg))
         #if dp.utils.verbosity >= 2:
             #pbar = progressbar.ProgressBar(maxval=total, widgets = (
             #    progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
@@ -174,7 +175,7 @@ class Ontology:
         self.generateExamples('~'+term, output, associations, maxNegative)
         #if dp.utils.verbosity >= 2:
         #    pbar.finish()
-        debug("Finished generating dataset for term: %s" % (self[term]['name']))
+        debug("Finished generating dataset for term: %s" % (termname))
 
     def getTermByName(self, name):
         """Returns human-readable name of the given GO term."""
