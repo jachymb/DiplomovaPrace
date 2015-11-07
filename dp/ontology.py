@@ -189,7 +189,6 @@ class Ontology:
         terms = sorted(self.ontology.keys(), key = lambda x: (-self._termDepth(x), x))[1:3] # This sorting is needed later in bnet learning
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
         treeliker.runValidation(self.reserved)
-        sys.exit()
         def processTerm(term):
             return treeliker.runTermTest(term, maxPositive, maxNegative)
             
