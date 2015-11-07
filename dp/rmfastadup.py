@@ -1,4 +1,4 @@
-#!/usr/bin/evn python
+#!/usr/bin/env python
 """Remove duplicates in a fasta file"""
 import sys
 from dp.associations import GeneAssociations
