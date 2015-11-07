@@ -21,7 +21,7 @@ class TreeLikerWrapper:
     def runValidation(self, dataset):
         validationPath = RESULTS / 'validation.txt'
         with validationPath.open('w') as output:
-            self.ontology.generateDataset(self.ontology.root, output, associations=dataset)
+            self.ontology.generateDataset(self.ontology.root, output, associations=dataset, maxPositive = len(dataset[self.ontology.root]))
 
         arff = 'validation.arff'
 

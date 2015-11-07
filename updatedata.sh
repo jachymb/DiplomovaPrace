@@ -1,4 +1,7 @@
 #!/bin/sh
+if [ ! -f config.sh ]; then
+  cp config-sample.sh config.sh
+fi
 source ./config.sh
                                                     # port PDBe server is using
 
@@ -6,8 +9,10 @@ mkdir -p results
 mkdir -p data/associations data/derived_data data/obo data/serialized_genes data/xml 
 
 cd data/associations
-wget -N http://geneontology.org/gene-associations/gene_association.goa_pdb.gz
-yes | gunzip -f gene_association.goa_pdb.gz
+if [ ! -f gene_association.goa_pdb ]; then
+  wget -N http://geneontology.org/gene-associations/gene_association.goa_pdb.gz
+  yes | gunzip -f gene_association.goa_pdb.gz
+fi
 cp gene_association.goa_pdb gene_association.goa_pdb_reserved
 
 cd ../..
@@ -15,6 +20,7 @@ cd ../..
 ./main.py \
   --dump-associations "$ASSOCFILE_SER" \
   --dataset "$DATASET" \
+  --reserve "$RESERVED" \
   "$ONTOLOGY" \
   "$ASSOCFILE"
 

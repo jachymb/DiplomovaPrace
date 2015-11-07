@@ -43,6 +43,8 @@ MAPPING = {
         'Z' : 'glx', # Glutamine or glutamic acid
         }
 
+IGNORE = [None, 'sec', 'pyl']
+
 class GeneFactory:
     openGenes = []
 
@@ -68,7 +70,6 @@ class GeneFactory:
         self.openGenes.append(name)
         found = None
         for gene in Gene.fromXML(fullName):
-            gene.dump() 
             if gene.name == fullName: found = gene
         self.openGenes.remove(name)
         
@@ -80,15 +81,19 @@ class Gene:
     """ This class represents a single gene and the protein it encodes. """
 
     DISTANCE_RESOLUTION = 2
-    MAX_DISTANCE = 10
+    MAX_DISTANCE = 14
 
     XML_URL = "http://www.rcsb.org/pdb/files/%s.xml.gz"
+    recalculateDists = False
 
     def __init__(self, name, sequence, structure, distances = None):
         self.name = name
         self.structure = structure
         self.sequence = sequence
-        self.distances = distances if distances is not None else tuple(self.getDistances())
+        calcDists = (distances is None or self.recalculateDists)
+        self.distances = tuple(self.getDistances() if calcDists else distances)
+        if calcDists:
+            self.dump()
         #debug('Initialized gene '+name)
 
     @staticmethod
@@ -117,14 +122,14 @@ class Gene:
 
         # Download data if not stored on disc
         if not fname.is_file():
-            #debug("Downloading file for gene %s... " % name, False)
+            debug("Downloading file for gene %s... " % name, False)
             req = Request(cls.XML_URL % name, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'})
             with fname.open('wb') as f:
                 f.write(urlopen(req).read())
             #debug("Done.")
 
         # Parse the file
-        #debug("Parsing XML for gene %s... " % name)
+        debug("Parsing XML for gene %s... " % name)
 
         tag_stack = []
         elem_stack = []
@@ -208,7 +213,8 @@ class Gene:
     def logicalRepresentation(self, postfix = None):
         """Generates the logical representation usable for learning."""
 
-        results = [("proteinName", (self.name,))] # predicate head, parameters
+        #results = [("proteinName", (self.name,))] # predicate head, parameters
+        results = []
 
         if postfix is None:
             postfix = self.name
@@ -218,17 +224,18 @@ class Gene:
         for i, aminoAcid in enumerate(self.sequence):
             resName = self.resName(i)
             results.append(("res", (resName,)))
-            if aminoAcid is not None:
+            if aminoAcid not in IGNORE:
                 results.append(("residue", (resName, aminoAcid)))
-            if i > 0:
-                results.append(("next", (self.resName(i-1), resName)))
+            #if i > 0:
+            #    results.append(("next", (self.resName(i-1), resName)))
 
         # Distance literals
         for i, j, dist in self.distances:
-            results.append(("dist", (self.resName(i), self.sequence[i], self.resName(j), self.sequence[j], dist)))
+            #results.append(("dist", (self.resName(i), self.sequence[i], self.resName(j), self.sequence[j], dist)))
+            results.append(("dist", (self.resName(i), self.resName(j), dist)))
 
         results.sort()
-        return ["%s(%s)" % (head, ", ".join(map(str, args))) for head, args in results] + self.backgroundKnowledge
+        return ["%s(%s)" % (head, ", ".join(map(str, args))) for head, args in results] #+ self.backgroundKnowledge
 
     @staticmethod
     def serializedFileName(name):

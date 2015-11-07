@@ -43,12 +43,11 @@ class GeneAssociations:
                         associations[term].add(gene)
                         allgenes.add(gene)
         debug("Finished reading gene associations file %s... " % inputFileName)
-        if dataset is not None:
-            d = dataset.difference(allgenes)
-            if d:
-                debug("Missing genes: %s!!!" % ", ".join(d))
+        #if dataset is not None:
+        #    d = dataset.difference(allgenes)
+        #    if d:
+        #        debug("Missing genes: %s!!!" % ", ".join(d))
         return cls(associations, alltaxons, dataset)
-
 
     def transitiveClosure(self):
         """Transitive closure of associations makes genes to be associated to all parents of nodes they are currently associated to."""
