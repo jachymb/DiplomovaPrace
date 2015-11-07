@@ -14,6 +14,8 @@ if len(sys.argv) not in (5,6):
     sys.exit(1)
 if len(sys.argv) == 5: sys.argv.append(20)
 ALL, DISTS, THRESHOLD, DATASET, ITERS = sys.argv[1:] 
+THRESHOLD = float(THRESHOLD)
+ITERS = int(ITERS)
 
 class Grouper:
     def __init__(self, n=2):
