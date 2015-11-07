@@ -1,4 +1,4 @@
-#!/usr/bin/python -W ignore
+#!/usr/bin/env python -W ignore
 import re
 import csv
 import numpy
