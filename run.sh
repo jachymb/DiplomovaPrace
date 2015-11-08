@@ -16,6 +16,5 @@ source ./config.sh
   --memory "$MEMORY" \
   --processes "$PROCESSES" \
   --verbosity "$VERBOSITY" \
-  --reserve "$RESERVED" \
   "$ONTOLOGY" \
   "$ASSOCFILE_SER"

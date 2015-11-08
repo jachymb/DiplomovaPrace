@@ -107,4 +107,4 @@ class TreeLikerWrapper:
 
         self._runTreeLiker(resultPath, batchPath)
 
-        return tuple(learningTest(resultPath))
+        return learningTest(resultPath)

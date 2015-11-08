@@ -11,7 +11,6 @@ from dp.treeliker import TreeLikerWrapper
 from collections import defaultdict
 from itertools import groupby, product
 from pathlib import Path
-from pomegranate import DiscreteDistribution, ConditionalProbabilityTable, State, BayesianNetwork
 import dp.utils
 
 __all__ = ["Onotology"]
@@ -119,6 +118,7 @@ class Ontology:
                 print("}", file=output)
             for fmt in ('ps', 'png'):
                 outFile = dotFile.parent / (dotFile.stem + '.' + fmt)
+                #print(" ".join(['dot', '-T'+fmt, str(dotFile), '-o', str(outFile)]))
                 try:
                     subprocess.Popen(['dot', '-T'+fmt, str(dotFile), '-o', str(outFile)]) 
                 except IOError:
@@ -247,13 +247,18 @@ class Ontology:
     def completeTest(self, treelikerPath, template, processes = 1):
         self.generateExamplesUnified()
         bestClassifiers = []
-        terms = self.termsByDepth() # This sorting is needed later in bnet learning
+        terms = self.termsByDepth()[1:3] # This sorting is needed later in bnet learning
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
         #treeliker.runValidation(self.reserved)
         def processTerm(term):
             return treeliker.runTermTest(term)
             
-        parallel_map_dill(processes, processTerm, terms)
+        learned = parallel_map_dill(processes, processTerm, terms)
+        for clfName, folds in learned:
+            for i, (clf, _, _) in enumerate(folds):
+                pass
+                #TODO
+
 
         #for term in terms:
         #    if term == self.root:

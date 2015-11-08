@@ -35,7 +35,7 @@ if __name__ == "__main__":
     #parser.add_option("-n", "--max-negative", dest="max_negative", type="int", help="Maximum negative samples.")
     parser.add_option("-m", "--max", dest="max", type="int", default=2048, help="Maximum dataset size.")
     parser.add_option("-p", "--template", dest="template", help="The template for TreeLiker. Use with -f.")
-    parser.add_option("-r", "--reserve", dest="reserve", type="float", help="Ratio of genes (or absolute number if >= 1) to reserve for Bayessian learning.", default = 1024)
+    #parser.add_option("-r", "--reserve", dest="reserve", type="float", help="Ratio of genes (or absolute number if >= 1) to reserve for Bayessian learning.", default = 1024)
     parser.add_option("-s", "--no-deserialize", dest="deserialize", help="Don't deserialize stored gene data.", action="store_false")
     parser.add_option("-v", "--verbosity", dest="verbosity", type="int", default=2, help="0 = Silent, 1 = Hide dynamic elements, 2  = Show everything")
 
@@ -60,15 +60,15 @@ if __name__ == "__main__":
 
     dataset = None
     if options.dataset:
-        # FIXME: When dataset is changed, serialized associations need to be regenerated. This is serious bug if we don't seed random
-        dataset = [*open(options.dataset).read().splitlines()]
+        # FIXME: When dataset is changed, serialized associations need to be regenerated. This is serious bug if we don't seed random to a constant
+        dataset = [l.strip() for l in open(options.dataset)]
         random.shuffle(dataset)
-        assert options.reserve > 0.0
-        if options.reserve < 1.0: # Use ratio
-            splitIndex = int(options.reserve * len(dataset))
-        else:
-            splitIndex = int(options.reserve)
-        reserved = set(dataset[:splitIndex])
+        #assert options.reserve > 0.0
+        #if options.reserve < 1.0: # Use ratio
+        #    splitIndex = int(options.reserve * len(dataset))
+        #else:
+        #    splitIndex = int(options.reserve)
+        #reserved = set(dataset[:splitIndex])
         #dataset = set(dataset[splitIndex:])
         dataset = set(dataset)
 

@@ -13,14 +13,13 @@ if [ ! -f gene_association.goa_pdb ]; then
   wget -N http://geneontology.org/gene-associations/gene_association.goa_pdb.gz
   yes | gunzip -f gene_association.goa_pdb.gz
 fi
-cp gene_association.goa_pdb gene_association.goa_pdb_reserved
+#cp gene_association.goa_pdb gene_association.goa_pdb_reserved
 
 cd ../..
 
 ./main.py \
   --dump-associations "$ASSOCFILE_SER" \
   --dataset "$DATASET" \
-  --reserve "$RESERVED" \
   "$ONTOLOGY" \
   "$ASSOCFILE"
 
