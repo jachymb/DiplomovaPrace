@@ -167,6 +167,7 @@ class Ontology:
         return sorted(terms, key = lambda x: (m*self._termDepth(x), x))
 
     def generateExamplesUnified(self):
+        debug("Generating unified datasets.")
         terms = self.termsByDepth(False)
         genes = sorted(self.associations[self.root])
         rootname = self.ontology[self.root]['name']
@@ -175,7 +176,8 @@ class Ontology:
                     for term
                     in (self[t]['name'] for t in self.ontology.keys())
                     if term != rootname]
-            for i, geneName in enumerate(genes):
+            #for i, geneName in enumerate(genes):
+            for geneName in genes:
                 #debug("%d. Writing gene %s." % (i, geneName))
                 gene = self.geneFactory.getGene(geneName)
                 repg = ", ".join(gene.logicalRepresentation())

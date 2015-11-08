@@ -123,4 +123,3 @@ class GeneAssociations:
             size = len(allgenes)
 
         debug("Finished shinking associations. Left with %d genes." % (size))
-        debug(" ,".join(allgenes))

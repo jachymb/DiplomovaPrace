@@ -10,15 +10,13 @@ from sklearn.svm import SVC
 from sklearn import cross_validation
 from sklearn.preprocessing import normalize, scale, StandardScaler
 from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix, precision_recall_curve
+from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix, precision_recall_curve, roc_curve, auc
 from pathlib import Path
 from collections import Counter
+from dp.utils import NUM_FOLDS
 
 from sklearn.decomposition import PCA
-from sklearn.lda import LDA
-
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
 __all__ = ['readArff', 'learningTest']
 
@@ -91,10 +89,13 @@ def learningTest(cvdir):
             scores = []
             classifiers = []
             print('Testing the classifier %s:' % name, file=output)
+    
+            for i in range(NUM_FOLDS):
+                foldDir = cvdir / str(i)
+                train = foldDir / 'train.arff'
+                test = foldDir / 'test.arff'
 
-            for train, test in zip(sorted(cvdir.glob('train_*.arff')), sorted(cvdir.glob('test_*.arff'))):
                 clf = Clf()
-                i = int(train.name[1+train.name.find('_'):train.name.find('.')])
 
                 X_train, y_train, _ = readArff(train)
                 X_test , y_test,  _ = readArff(test)
@@ -121,44 +122,46 @@ def learningTest(cvdir):
                 clf.conf = conf
                 clf.cvindex = i
                 clf.name = name
+                cfl.dir = cvdir / name.replace(' ','_')
                 classifiers.append(clf)
 
-                #y_score = clf.decision_function(X_test)
-                #precision, recall, _ = precision_recall_curve(y_test, y_score)
-                #Plot Precision-Recall curve
-                #plt.clf()
-                #plt.plot(recall, precision, label='Precision-Recall curve')
-                #plt.plot([1,0], [0,1], label='id')
-                #plt.xlabel('Recall')
-                #plt.ylabel('Precision')
-                #plt.ylim([0.0, 1.05])
-                #plt.xlim([0.0, 1.0])
-                #plt.title('Precision-Recall '+name)
-                #plt.legend(loc="lower left")
-                #plt.show()
-                #break
+                with in_directory(clf.dir):
+                    y_score = clf.decision_function(X_test)
+                    precision, recall, _ = precision_recall_curve(y_test, y_score)
+                    #Plot Precision-Recall curve
+                    plt.clf()
+                    plt.plot(recall, precision, label='Precision-Recall curve')
+                    plt.plot([1,0], [0,1], label='id')
+                    plt.xlabel('Recall')
+                    plt.ylabel('Precision')
+                    plt.ylim([0.0, 1.0])
+                    plt.xlim([0.0, 1.0])
+                    plt.title('Precision-Recall '+name)
+                    plt.legend(loc="lower left")
+                    plt.savefig('precision-recall-%d.png' % i)
+                    #break
 
-                #import matplotlib.pyplot as plt
-                #target_names = ["pos","neg"]
-                #pca = PCA(n_components=2)
-                #X_r = pca.fit(X_train).transform(X_train)
-                #print(X_r.shape)
-                #plt.figure()
-                #for c, i, target_name in zip("rg", [0, 1], target_names):
-                #    plt.scatter(X_r[y_train == i, 0], X_r[y_train == i, 1], c=c, label=target_name)
-                #plt.legend()
-                #plt.title('PCA')
+                    #import matplotlib.pyplot as plt
+                    #target_names = ["pos","neg"]
+                    #pca = PCA(n_components=2)
+                    #X_r = pca.fit(X_train).transform(X_train)
+                    #print(X_r.shape)
+                    #plt.figure()
+                    #for c, i, target_name in zip("rg", [0, 1], target_names):
+                    #    plt.scatter(X_r[y_train == i, 0], X_r[y_train == i, 1], c=c, label=target_name)
+                    #plt.legend()
+                    #plt.title('PCA')
 
-                #lda = LDA(n_components=10)
-                #X_r2 = lda.fit(X_train, y_train).transform(X_test)
-                #plt.figure()
-                #print(X_r2.shape)
-                #for c, i, target_name in zip("rg", [0, 1], target_names):
-                #    plt.scatter(X_r2[y_test == i, 0], X_r2[y_test == i, 0], c=c, label=target_name)
-                #plt.legend()
-                #plt.title('LDA')
+                    #lda = LDA(n_components=10)
+                    #X_r2 = lda.fit(X_train, y_train).transform(X_test)
+                    #plt.figure()
+                    #print(X_r2.shape)
+                    #for c, i, target_name in zip("rg", [0, 1], target_names):
+                    #    plt.scatter(X_r2[y_test == i, 0], X_r2[y_test == i, 0], c=c, label=target_name)
+                    #plt.legend()
+                    #plt.title('LDA')
 
-                #plt.show()
+                    #plt.show()
                 
             scores = numpy.array(scores)
             print("Average: %.2f%% (+/- %.2f%%)" % (scores.mean()*100.0, scores.std() * 2 * 100.0), file=output)
@@ -167,8 +170,10 @@ def learningTest(cvdir):
             bestClassifier = classifiers[bestPerforming]
             bestClassifier.cvindex = bestPerforming
 
-            with (cvdir / (name.replace(' ','_')+'.pickle')).open('wb') as bestSer:
+            with (bestClassifier.dir / 'best.pickle').open('wb') as bestSer:
                 pickle.dump(bestClassifier, bestSer)
+
+
 
             #results.append(bestClassifier)
             yield bestClassifier

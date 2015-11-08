@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import sys
 import os
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 import random
 random.seed(0)

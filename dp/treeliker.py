@@ -1,12 +1,12 @@
 import subprocess
 import os
 from pathlib import Path
+from sklearn import cross_validation
 from dp.learn import learningTest
-from dp.utils import in_directory, debug, RESULTS, getTermPath
+from dp.utils import in_directory, debug, RESULTS, getTermPath, NUM_FOLDS, TEST_SIZE
 import dp
 import sys
 
-NUM_FOLDS = 8
 
 __all__ = ["TreeLikerWrapper"]
 
@@ -66,10 +66,11 @@ class TreeLikerWrapper:
         if dp.utils.verbosity >= 2:
             sys.stderr.write("\n")
 
-        debug("Finished treeliker for "+batchPath.name)
+        debug("Finished treeliker for "+resultPath.name)
 
     def runTermTest(self, term):
         term = self.ontology[term]['name']
+        debug("Preparing for TreeLiker on term %s." % term)
 
         resultPath = getTermPath(term)
         batchPath = resultPath / 'batch.treeliker'
@@ -77,20 +78,29 @@ class TreeLikerWrapper:
         datasetPath = resultPath / 'dataset.txt'
 
         batchFile = "set(algorithm, relf_grounding_counting)\n" \
-                    "set(output_type, cv)\n" \
-                    "set(output, '%s')\n" \
+                    "set(output_type, train_test)\n" \
                     "set(examples, '%s')\n" \
                     "set(template, [%s])\n" \
-                    "set(num_folds, %d)\n" \
-                    "set(covered_class, '%s')\n" \
-                    "work(yes)\n"
+                    "set(covered_class, '%s')\n\n" % (
+                        datasetPath.name,
+                        self.template,
+                        term)
 
-        batchFile %= (
-                os.curdir,
-                datasetPath.name,
-                self.template,
-                NUM_FOLDS,
-                term)
+        with datasetPath.open() as ds:
+            dataSetLen = len([*ds]) # Counts lines
+
+        for i, (train, test) in enumerate(cross_validation.KFold(dataSetLen, NUM_FOLDS)):
+            path = resultPath / str(i)
+            if not path.is_dir():
+                path.mkdir()
+                
+            batchFile += "set(output, '%s')\n" \
+                         "set(train_set, [%s])\n" \
+                         "set(test_set, [%s])\n" \
+                         "work(yes)\n" % (
+                             path.name,
+                             ",".join(map(str,train)),
+                             ",".join(map(str,test)))
 
         with batchPath.open('w') as bf:
             bf.write(batchFile)

@@ -6,7 +6,10 @@ import multiprocessing
 from datetime import datetime
 from pathlib import Path
 
+NUM_FOLDS = 8
+TEST_SIZE = 0.4
 RESULTS = Path('results') # I don't like this to in configuration so it's here
+
 def getTermPath(term):
     # Expects term name, not GO id
     path = RESULTS / term.replace(' ','_')
@@ -23,6 +26,9 @@ def debug(s, end=True):
 @contextmanager
 def in_directory(path):
     pwd = os.path.abspath(os.curdir)
+    path = Path(path)
+    if not path.is_dir():
+        path.mkdir()
     os.chdir(str(path))
     yield
     os.chdir(pwd)
