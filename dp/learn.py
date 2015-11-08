@@ -1,19 +1,21 @@
-#!/usr/bin/env python -W ignore
+#!/usr/bin/env python
 import re
 import csv
 import numpy
 import sys
 import pickle
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn import cross_validation
 from sklearn.preprocessing import normalize, scale, StandardScaler
 from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix, precision_recall_curve, roc_curve, auc
+from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix, precision_recall_curve, roc_curve, auc, average_precision_score
+from scipy import interp
 from pathlib import Path
 from collections import Counter
-from dp.utils import NUM_FOLDS
+from dp.utils import NUM_FOLDS, in_directory
 
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
@@ -58,15 +60,17 @@ def readArff(filename):
 def learningTest(cvdir):
     clasfifiers = (
             #TOOD, use third dict for params
-            ("SGD", lambda: SGDClassifier(n_iter=100,alpha=0.01)),
-            ("RBF SVM C=0.5", lambda : SVC(C=0.1)),
-            ("RBF SVM C=1", lambda: SVC(shrinking=False, tol=1e-5)),
-            ("RBF SVM C=2", lambda : SVC(C=10)),
-            ("RBF SVM C=inf", lambda : SVC(C=numpy.inf)),
-            ("Linear SVM C=1", lambda: SVC(kernel='linear')),
-            ("Quadratic SVM C=1", lambda: SVC(kernel='poly', degree=2)),
-            ("Cubic SVM C=1", lambda: SVC(kernel='poly', degree=3)),
+            ("AdaBoost-DecisionTree", AdaBoostClassifier),
+            ("5-NN", lambda: KNeighborsClassifier(p=1, algorithm='kd_tree')),
             ("Random Forest", RandomForestClassifier),
+            ("SGD", lambda: SGDClassifier(n_iter=100,alpha=0.01,loss="modified_huber")),
+            ("RBF SVM C=1", lambda: SVC(shrinking=False, tol=1e-5,probability=True)),
+            ("RBF SVM C=0.5", lambda : SVC(C=0.1,probability=True)),
+            ("RBF SVM C=2", lambda : SVC(C=10,probability=True)),
+            ("RBF SVM C=inf", lambda : SVC(C=numpy.inf,probability=True)),
+            ("Linear SVM C=1", lambda: SVC(kernel='linear',probability=True)),
+            ("Quadratic SVM C=1", lambda: SVC(kernel='poly', degree=2,probability=True)),
+            ("Cubic SVM C=1", lambda: SVC(kernel='poly', degree=3,probability=True)),
             )
 
     scaler = StandardScaler()
@@ -88,9 +92,11 @@ def learningTest(cvdir):
         for name, Clf in clasfifiers:
             scores = []
             classifiers = []
+            data = []
             print('Testing the classifier %s:' % name, file=output)
+            clfdir = cvdir / name.replace(' ','_')
     
-            for i in range(NUM_FOLDS):
+            for i in range(NUM_FOLDS): # NUM_FOLDS
                 foldDir = cvdir / str(i)
                 train = foldDir / 'train.arff'
                 test = foldDir / 'test.arff'
@@ -109,7 +115,10 @@ def learningTest(cvdir):
                 negWeight = numpy.sum(pos) / len(y_train)
                 sample_weight = posWeight*pos + negWeight*neg
 
-                clf.fit(X_train, y_train, sample_weight = sample_weight)
+                try:
+                    clf.fit(X_train, y_train, sample_weight = sample_weight)
+                except TypeError:
+                    clf.fit(X_train, y_train)
                 y_pred = clf.predict(X_test)
                 pos = (y_test == POSTIVE_LABEL)
                 neg = (y_test == NEGATIVE_LABEL)
@@ -118,27 +127,76 @@ def learningTest(cvdir):
                 #reca = recall_score(y_test, y_pred, average='weighted')
                 conf = confusion_matrix(y_test, y_pred)
                 print("Fold %d score: %.2f, confusion matrix: %s" % (i, score*100.0, conf.tolist()), file=output)
-                scores.append(score)
                 clf.conf = conf
                 clf.cvindex = i
                 clf.name = name
-                cfl.dir = cvdir / name.replace(' ','_')
                 classifiers.append(clf)
+                data.append((X_test, y_test))
 
-                with in_directory(clf.dir):
-                    y_score = clf.decision_function(X_test)
+            with in_directory(clfdir):
+                legendprop = {'size': 10}
+                #Plot Precision-Recall curve
+                plt.clf()
+                #plt.plot([0, 0], [1, 1], '--', color=(0.6, 0.6, 0.6))
+                y_tests = []
+                y_scores = []
+                for i, (clf, (X_test, y_test)) in enumerate(zip(classifiers, data)):
+                    try:
+                        y_score = clf.decision_function(X_test)
+                    except AttributeError:
+                        y_score = clf.predict_proba(X_test)[:, 0]
                     precision, recall, _ = precision_recall_curve(y_test, y_score)
-                    #Plot Precision-Recall curve
-                    plt.clf()
-                    plt.plot(recall, precision, label='Precision-Recall curve')
-                    plt.plot([1,0], [0,1], label='id')
-                    plt.xlabel('Recall')
-                    plt.ylabel('Precision')
-                    plt.ylim([0.0, 1.0])
-                    plt.xlim([0.0, 1.0])
-                    plt.title('Precision-Recall '+name)
-                    plt.legend(loc="lower left")
-                    plt.savefig('precision-recall-%d.png' % i)
+                    y_tests.extend(y_test)
+                    y_scores.extend(y_score)
+
+                    area = average_precision_score(y_test, y_score)
+                    clf.pr_auc = area
+                    plt.plot(recall, precision, label='Fold %d, AUC = %0.2f' % (i, area), lw=1)
+
+                precision, recall, _ = precision_recall_curve(y_tests, y_scores)
+                area = average_precision_score(y_tests, y_scores)
+
+                plt.plot(recall, precision, 'k--', label='Mean, AUC = %0.2f' % (area), lw=2)
+                plt.xlabel('Recall')
+                plt.ylabel('Precision')
+                plt.xlim([-0.05, 1.05])
+                plt.ylim([-0.05, 1.05])
+                plt.title('Precision-Recall: '+name)
+                plt.legend(loc="lower center", prop=legendprop)
+                plt.savefig('precision-recall.png')
+
+                #Plot ROC curve
+                plt.clf()
+                plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6))
+                mean_tpr = 0.0
+                mean_fpr = numpy.linspace(0, 1, 100)
+                all_tpr = []
+                for i, (clf, (X_test, y_test)) in enumerate(zip(classifiers, data)):
+                    probabs = clf.predict_proba(X_test)
+                    fpr, tpr, _ = roc_curve(y_test, probabs[:, 1])
+                    mean_tpr += interp(mean_fpr, fpr, tpr)
+                    mean_tpr[0] = 0.0
+                    roc_auc = auc(fpr, tpr)
+                    clf.roc_auc = roc_auc
+                    scores.append(roc_auc)
+                    plt.plot(fpr, tpr, lw=1, label='Fold %d, AUC = %0.2f' % (i, roc_auc))
+
+
+                mean_tpr /= NUM_FOLDS
+                mean_tpr[-1] = 1.0
+                mean_auc = auc(mean_fpr, mean_tpr)
+                plt.plot(mean_fpr, mean_tpr, 'k--',
+                        label='Mean, AUC = %0.2f' % mean_auc, lw=2)
+
+                plt.xlim([-0.05, 1.05])
+                plt.ylim([-0.05, 1.05])
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title('Receiver operating characteristic: '+name)
+                plt.legend(loc="lower right", prop=legendprop)
+                plt.savefig('roc.png')
+
+
                     #break
 
                     #import matplotlib.pyplot as plt
@@ -164,13 +222,13 @@ def learningTest(cvdir):
                     #plt.show()
                 
             scores = numpy.array(scores)
-            print("Average: %.2f%% (+/- %.2f%%)" % (scores.mean()*100.0, scores.std() * 2 * 100.0), file=output)
-            print("Best: %.2f%%\n" % (scores.max()*100.0), file=output, flush=True)
+            #print("Average: %.2f%% (+/- %.2f%%)" % (scores.mean()*100.0, scores.std() * 2 * 100.0), file=output)
+            print("Best: ROC AUC = %.2f%%\n" % (scores.max()), file=output, flush=True)
             bestPerforming = numpy.argmax(scores)
             bestClassifier = classifiers[bestPerforming]
             bestClassifier.cvindex = bestPerforming
 
-            with (bestClassifier.dir / 'best.pickle').open('wb') as bestSer:
+            with (clfdir / 'best.pickle').open('wb') as bestSer:
                 pickle.dump(bestClassifier, bestSer)
 
 
