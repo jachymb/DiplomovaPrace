@@ -55,7 +55,7 @@ class Ontology:
                     ontology[refid]['children'].append(term['id'])
                     ontology[term['id']]['parents'].append(refid)
 
-        self.ontology = ontology
+        self.ontology = {**ontology}
 
         self.associations = None
         self.geneFactory = GeneFactory()
@@ -81,14 +81,16 @@ class Ontology:
         Do not call this prior to calling transitiveClosure()"""
         notEnough = self.termsByDepth(terms = (term for term in self.ontology if len(self.associations[term]) < lb))
         for term in notEnough:
-            for parent in self.ontology[term]['parents']:
-                if term in self.ontology[parent]['children']:
-                    self.ontology[parent]['children'].remove(term)
-            del self.ontology[term]
             if term in self.associations.associations:
                 del self.associations.associations[term]
             if hasattr(self, 'reserved') and term in self.reserved.associations:
                 del self.reserved.associations[term]
+                
+            for d1, d2 in (('parents', 'children'),('children','parents')):
+                for parent in self.ontology[term][d1]:
+                    if term in self.ontology[parent][d2]:
+                        self.ontology[parent][d2].remove(term)
+            del self.ontology[term]
         #debug("Deleted %d terms with not enough associations. Left %d terms." % (len(notEnough), len(self.ontology)))
 
     def jsonExport(self):
@@ -99,18 +101,22 @@ class Ontology:
     def dotExport(self):
         """ Export as a graph to the DOT format for graphical presentation."""
         debug("Exporting ontology to dot.")
+        def nodename(t): return t.replace(":", "")
         for direction in ("parents", "children"):
             dotFile = self.inputFileName.parent / (self.inputFileName.stem +"_"+direction+ '.dot')
             with dotFile.open('w') as output:
                 print("digraph ontology {", file=output)
-                def nodename(t): return t.replace(":", "")
+                print('overlap="false";', file=output)
+                print('root="%s";' % nodename(self.root), file=output)
                 for term, props in self.ontology.items():
                     name = props['name']
+                    if not name:
+                        continue
                     if ',' in name:
                         name = name.replace(', ', r',\n')
                     else:
                         name = name.replace('binding', r'\nbinding').replace('activity',r'\nactivity').replace(r' \n',r'\n')
-                    print('%s [label="%s"]' % (nodename(term), name), file=output)
+                    print('%s [fontsize=8,label="%s"]' % (nodename(term), name), file=output)
 
                 for term, props in self.ontology.items():
                     for related in props[direction]:
@@ -120,7 +126,8 @@ class Ontology:
                 outFile = dotFile.parent / (dotFile.stem + '.' + fmt)
                 #print(" ".join(['dot', '-T'+fmt, str(dotFile), '-o', str(outFile)]))
                 try:
-                    subprocess.Popen(['dot', '-T'+fmt, str(dotFile), '-o', str(outFile)]) 
+                    subprocess.Popen(['dot', '-T'+fmt, str(dotFile), '-o', str(outFile).replace(".","_dot.")]) 
+                    subprocess.Popen(['twopi', '-T'+fmt, str(dotFile), '-o', str(outFile).replace(".","_twopi.")]) 
                 except IOError:
                     pass
         debug("Finished dot export.")

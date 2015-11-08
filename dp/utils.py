@@ -1,4 +1,5 @@
 import sys
+from collections import defaultdict
 import os
 from contextlib import contextmanager
 import dill
@@ -48,4 +49,11 @@ def pack_function_for_map(target_function, items, *args, **kwargs):
 def parallel_map_dill(workers, function, iterable):
     pool = multiprocessing.Pool(processes=workers)
     return pool.map(*pack_function_for_map(function, iterable))
+
+def flipdict(d):
+    new = defaultdict(dict)
+    for k, v in d.items():
+        for s, r in v.items():
+            new[s][k] = r
+    return new
 

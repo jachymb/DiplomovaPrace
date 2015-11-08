@@ -88,7 +88,6 @@ if __name__ == "__main__":
     ontology.overView()
     ontology.dotExport()
 
-
     #ontology._toBayessNet(None,None)
     TreeLikerWrapper.maxMemory = options.memory
     Gene.recalculateDists = bool(options.recalcDists)
