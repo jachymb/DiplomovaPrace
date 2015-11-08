@@ -22,6 +22,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
 __all__ = ['readArff', 'learningTest']
 
+VALIDATION_RATIO = 0.0
 POSTIVE_LABEL = 0
 NEGATIVE_LABEL = 1
 def readArff(filename):
@@ -108,6 +109,9 @@ def learningTest(cvdir):
 
                 X_train = scaler.fit_transform(X_train)
                 X_test = scaler.transform(X_test, copy=True)
+                splitIndex = round(len(y_test)*VALIDATION_RATIO)
+                X_validation, y_validation = X_test[:splitIndex], y_test[:splitIndex]
+                clf.validation = X_test[splitIndex:], y_test[splitIndex:]
                
                 pos = (y_train == POSTIVE_LABEL)
                 neg = (y_train == NEGATIVE_LABEL)
