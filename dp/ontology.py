@@ -279,9 +279,6 @@ class Ontology:
 
         for i, byClf in nets.items():
             for clfName, net in byClf.items():
-                print(net)
-                print(net.network.states)
-                print(net.network.edges)
-                print(net.network.graph)
                 net.bake()
+        debug("Finished complete test.")
 

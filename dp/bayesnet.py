@@ -47,7 +47,6 @@ class BayesNet:
             hidden = DiscreteDistribution({'0': posTrain / totalTrain, '1': negTrain / totalTrain})
         hidden.freeze()
         hidden = State(hidden, name=term.replace(" ","_").replace(":",""))
-        print("Hidden node:", hidden)
 
         for child in children:
             childNode = self.ontology[child]['node'][self.clfName]
@@ -64,7 +63,6 @@ class BayesNet:
             [hidden.distribution])
         observed.freeze()
         observed = State(observed, name=(term+"_prediction").replace(" ","_").replace(":",""))
-        print("Observed node:", observed)
 
         self.network.add_states([hidden, observed])
         self.network.add_transition(hidden, observed)
