@@ -110,7 +110,7 @@ class GeneAssociations:
 
     def shrink(self, toSize, minTermAssociations):
         random.seed(0)
-        debug("Shinking associations")
+        debug("Shrinking associations")
         allgenes = sorted(self.associations[self.ontology.root])
         size = len(allgenes)
         while size > toSize:
@@ -122,4 +122,6 @@ class GeneAssociations:
             allgenes = sorted(self.associations[self.ontology.root])
             size = len(allgenes)
 
-        debug("Finished shinking associations. Left with %d genes." % (size))
+        self.ontology.genes = allgenes
+
+        debug("Finished shrinking associations. Left with %d genes." % (size))

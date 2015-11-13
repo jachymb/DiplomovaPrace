@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from dp.utils import NUM_FOLDS, in_directory, debug
 from pathlib import Path
 from scipy import interp
+from sklearn.dummy import DummyClassifier
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, BaggingClassifier
@@ -58,14 +59,14 @@ def readArff(filename):
             labels.append(classes[record[-1]])
             data.append([int(x) for x in record[:-1]])
     return numpy.array(data, dtype=float), numpy.array(labels), classes
-
+DummyClassifier
 legendprop = {'size': 10}
 def plotRoc(clfName, folds, outdir):
     mean_tpr = 0.0
     mean_fpr = numpy.linspace(0, 1, 100)
     all_tpr = []
     plt.clf()
-    for i, (clf, X_test, y_test) in enumerate(folds):
+    for i, (clf, X_test, y_test, _, _) in enumerate(folds):
 
         probabs = clf.predict_proba(X_test)
         try:
@@ -74,7 +75,12 @@ def plotRoc(clfName, folds, outdir):
             fpr, tpr, _ = roc_curve(y_test, probabs[:, 0], pos_label=POSTIVE_LABEL)
         mean_tpr += interp(mean_fpr, fpr, tpr)
         mean_tpr[0] = 0.0
-        roc_auc = auc(fpr, tpr)
+        fpr = numpy.nan_to_num(fpr)
+        try:
+            roc_auc = auc(fpr, tpr)
+        except ValueError: # root node
+            roc_auc = 1.
+
         clf.roc_auc = roc_auc
         plt.plot(fpr, tpr, lw=1, label='Fold %d, AUC = %0.2f' % (i, roc_auc))
 
@@ -97,7 +103,7 @@ def plotPrc(clfName, folds, outdir):
     y_tests = []
     y_scores = []
     plt.clf()
-    for i, (clf, X_test, y_test) in enumerate(folds):
+    for i, (clf, X_test, y_test, _, _) in enumerate(folds):
         try:
             y_score = clf.decision_function(X_test)
         except AttributeError:
@@ -160,9 +166,9 @@ def learningTest(cvdir):
             #("LabelSpreading RBF", LabelSpreading),
             #("LabelSpreading-7nn", lambda: LabelSpreading(kernel='knn')),
             #("LabelPropagation-7nn", lambda: LabelPropagation(kernel='knn')),
-            ("AdaBoost-DecisionTree", AdaBoostClassifier),
+            #! ("AdaBoost-DecisionTree", AdaBoostClassifier),
             #("5-NN", lambda: KNeighborsClassifier(p=1, algorithm='kd_tree')),
-            ("Random Forest", RandomForestClassifier),
+            #! ("Random Forest", RandomForestClassifier),
             #("SGD", lambda: SGDClassifier(n_iter=100,alpha=0.01,loss="modified_huber")),
             ("RBF SVM C=1", lambda: SVC(shrinking=False, tol=1e-5,probability=True)),
             #("RBF SVM C=0.5", lambda : SVC(C=0.1,probability=True)),
@@ -202,7 +208,12 @@ def learningTest(cvdir):
             #plotLDA(X_train, X_test, y_train, y_test, foldDir)
 
             for name, Clf in clasfifiers:
-                clf = Clf()
+                debug("Fitting clasifier %s for fold %d of %d in node %s." % (name, i, NUM_FOLDS, cvdir.name))
+                if cvdir.name != 'molecular_function':
+                    clf = Clf()
+                else:
+                    clf = DummyClassifier(strategy='constant', constant=POSTIVE_LABEL)
+
                 print('Testing the classifier %s:' % name, file=output)
        
                 if clf.__module__.startswith('sklearn.semi_supervised'):
@@ -216,6 +227,7 @@ def learningTest(cvdir):
                 X_validation, y_validation = X_test[:splitIndex], y_test[:splitIndex]
                 clf.validation = X_test[splitIndex:], y_test[splitIndex:]
                
+
                 pos = (y_train == POSTIVE_LABEL)
                 neg = (y_train == NEGATIVE_LABEL)
                 posWeight = numpy.sum(neg) / len(y_train)
@@ -226,6 +238,7 @@ def learningTest(cvdir):
                     clf.fit(X_train, y_train, sample_weight = sample_weight)
                 except TypeError:
                     clf.fit(X_train, y_train)
+
                 y_pred = clf.predict(X_test)
                 pos = (y_test == POSTIVE_LABEL)
                 neg = (y_test == NEGATIVE_LABEL)
@@ -233,20 +246,20 @@ def learningTest(cvdir):
                 #reca = recall_score(y_test, y_pred, average='weighted')
                 score = accuracy_score(y_test[pos], y_pred[pos])*posWeight + accuracy_score(y_test[neg], y_pred[neg])*negWeight
                 conf = confusion_matrix(y_test, y_pred)
+                if len(conf) == 1:
+                    conf = numpy.array([[conf[0][0], 0],[0,0]])
                 print("Fold %d score: %.2f, confusion matrix: %s" % (i, score*100.0, conf.tolist()), file=output)
                 clf.conf = conf
                 clf.cvindex = i
                 clf.name = name
-                alldata[name].append((clf, X_test, y_test))
-
-
+                alldata[name].append((clf, X_train, y_train, X_test, y_test))
        
         for clfName, folds in alldata.items():
             plotRoc(clfName, folds, cvdir)
             plotPrc(clfName, folds, cvdir)
 
             # Musí to být tady, protože funkce výše mohou objekt ještě upravovat
-            for i, (clf,_,_) in enumerate(folds):
+            for i, (clf,_,_,_,_) in enumerate(folds):
                 foldDir = cvdir / str(i)
                 with (foldDir / (name.replace(' ','_')+'.pickle')).open('wb') as ser:
                     pickle.dump(clf, ser)

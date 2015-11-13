@@ -1,17 +1,18 @@
-import sys
-#import progressbar
-import random
-import traceback
-import json
-import subprocess
-from contextlib import ExitStack
-from dp.gene import GeneFactory
-from dp.utils import debug, parallel_map_dill, getTermPath
-from dp.treeliker import TreeLikerWrapper
 from collections import defaultdict
+from contextlib import ExitStack
+from dp.bayesnet import BayesNet
+from dp.gene import GeneFactory
+from dp.treeliker import TreeLikerWrapper
+from dp.utils import debug, parallel_map_dill, getTermPath
 from itertools import groupby, product
 from pathlib import Path
 import dp.utils
+import json
+#import progressbar
+import random
+import subprocess
+import sys
+import traceback
 
 __all__ = ["Onotology"]
 
@@ -54,6 +55,8 @@ class Ontology:
                     refid, refname = ref.split(' ! ')
                     ontology[refid]['children'].append(term['id'])
                     ontology[term['id']]['parents'].append(refid)
+                # This is used by Bayes nets
+                ontology[term['id']]['node'] = {} # clfName : node
 
         self.ontology = {**ontology}
 
@@ -176,15 +179,14 @@ class Ontology:
     def generateExamplesUnified(self):
         debug("Generating unified datasets.")
         terms = self.termsByDepth(False)
-        genes = sorted(self.associations[self.root])
-        rootname = self.ontology[self.root]['name']
+        #rootname = self.ontology[self.root]['name']
         with ExitStack() as stack: # Closes all files when exited
             files = [(term, stack.enter_context((getTermPath(term) / 'dataset.txt').open('w')))
                     for term
                     in (self[t]['name'] for t in self.ontology.keys())
-                    if term != rootname]
-            #for i, geneName in enumerate(genes):
-            for geneName in genes:
+                    ]#if term != rootname]
+            #for i, geneName in enumerate(self.genes):
+            for geneName in self.genes:
                 #debug("%d. Writing gene %s." % (i, geneName))
                 gene = self.geneFactory.getGene(geneName)
                 repg = ", ".join(gene.logicalRepresentation())
@@ -194,55 +196,55 @@ class Ontology:
                     e = '"%s" %s' % (term, repg)
                     print(e, file=output)
 
-    def generateExamples(self, term, output, associations, maxAssociations = None):
-        """Generates examples from genes associated with the term in logical reprentation in the pseudo-prolog syntax. """
-        def getRecord(geneName):
-            try:
-                gene = self.geneFactory.getGene(geneName)
-                e = '"%s" %s' % (term, ", ".join(gene.logicalRepresentation()))
-                print(e, file=output, flush=True)
-                #if pbar is not None:
-                #    pbar.update(pbar.currval + 1)
-            except Exception as exc:
-                traceback.print_exc()
+    #def generateExamples(self, term, output, associations, maxAssociations = None):
+     #    """Generates examples from genes associated with the term in logical reprentation in the pseudo-prolog syntax. """
+     #   def getRecord(geneName):
+     #       try:
+     #           gene = self.geneFactory.getGene(geneName)
+     #           e = '"%s" %s' % (term, ", ".join(gene.logicalRepresentation()))
+     #           print(e, file=output, flush=True)
+     #           #if pbar is not None:
+     #           #    pbar.update(pbar.currval + 1)
+     #       except Exception as exc:
+     #           traceback.print_exc()
 
-        genes = sorted(associations[term])
-        genes = list(genes)
-        random.shuffle(genes)
-        genes = genes[:maxAssociations]
-        for i,gene in enumerate(genes):
-            getRecord(gene)
-            #debug("%s %d/%d" %(self[term]['name'] if not term.startswith('~') else term,i,maxAssociations))
-        #with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            #executor.map(getRecord, genes)
+     #   genes = sorted(associations[term])
+     #   #genes = list(genes)
+     #   random.shuffle(genes)
+     #   genes = genes[:maxAssociations]
+     #   for i,gene in enumerate(genes):
+     #       getRecord(gene)
+     #       #debug("%s %d/%d" %(self[term]['name'] if not term.startswith('~') else term,i,maxAssociations))
+     #   #with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+     #       #executor.map(getRecord, genes)
             #for future in concurrent.futures.as_completed(s):
             #    debug("Future completed. " + str(future))
             #    if future.exception() is not None:
             #        debug("Exception: " + future.exception())
 
-    def generateDataset(self, term, output, maxPositive = None, maxNegative = None, associations = None):
-        """Generate whole dataset directly usable for learning. The terms are used as learning classes."""
-        # FIXME: Remove maxNegative parameter
-        if associations is None:
-            associations = self.associations
+    #def generateDataset(self, term, output, maxPositive = None, maxNegative = None, associations = None):
+    #    """Generate whole dataset directly usable for learning. The terms are used as learning classes."""
+    #    # FIXME: Remove maxNegative parameter
+    #    if associations is None:
+    #        associations = self.associations
 
-        totalPos = len(associations[term]) if maxPositive is None else min(maxPositive, len(associations[term]))
-        maxNegative = round(totalPos / associations.getRatio(term))
-        totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
-        total = totalPos + totalNeg
-        termname = self[term]['name'] if not term.startswith('~') else termname
-        debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (termname, totalPos, totalNeg))
+    #    totalPos = len(associations[term]) if maxPositive is None else min(maxPositive, len(associations[term]))
+    #    maxNegative = round(totalPos / associations.getRatio(term))
+    #    totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
+    #    total = totalPos + totalNeg
+    #    termname = self[term]['name'] if not term.startswith('~') else termname
+    #    debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (termname, totalPos, totalNeg))
         #if dp.utils.verbosity >= 2:
             #pbar = progressbar.ProgressBar(maxval=total, widgets = (
             #    progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
             #pbar.start()
         #else:
             #pbar = None
-        self.generateExamples(    term, output, associations, maxPositive)
-        self.generateExamples('~'+term, output, associations, maxNegative)
+    #    self.generateExamples(    term, output, associations, maxPositive)
+    #    self.generateExamples('~'+term, output, associations, maxNegative)
         #if dp.utils.verbosity >= 2:
         #    pbar.finish()
-        debug("Finished generating dataset for term: %s" % (termname))
+    #    debug("Finished generating dataset for term: %s" % (termname))
 
     def getTermByName(self, name):
         """Returns human-readable name of the given GO term."""
@@ -254,66 +256,32 @@ class Ontology:
     def completeTest(self, treelikerPath, template, processes = 1):
         self.generateExamplesUnified()
         bestClassifiers = []
-        terms = self.termsByDepth()[1:3] # This sorting is needed later in bnet learning
+        terms = self.termsByDepth() # This sorting is needed later in bnet learning
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
         #treeliker.runValidation(self.reserved)
         def processTerm(term):
             return treeliker.runTermTest(term)
-            
-        learned = parallel_map_dill(processes, processTerm, terms)
-        for clfName, folds in learned:
-            for i, (clf, _, _) in enumerate(folds):
-                pass
+        
+        nets = defaultdict(dict)
+        allresults = parallel_map_dill(processes, processTerm, terms)
+        for term, learned in zip(terms, allresults):
+            for clfName, folds in learned.items():
+
+                for i, (clf, X_train, y_train, X_test, y_test) in enumerate(folds):
+                    if clfName in nets[i]:
+                        net = nets[i][clfName]
+                    else:
+                        net = BayesNet(clfName, self)
+                        nets[i][clfName] = net
+
+                    net.generateCPD(term, clf, X_train, y_train, X_test, y_test) 
                 #TODO
 
+        for i, byClf in nets.items():
+            for clfName, net in byClf.items():
+                print(net)
+                print(net.network.states)
+                print(net.network.edges)
+                print(net.network.graph)
+                net.bake()
 
-        #for term in terms:
-        #    if term == self.root:
-        #        continue
-
-        #    best = treeliker.runTermTest(term, maxPositive, maxNegative)
-        #    bestClassifiers.append(best)
-        #    print("Best:",best)
-            
-        #bnet = self._toBayessNet(bestClassifiers, terms)
-
-    def _toBayessNet(self, classifiers, terms):
-        assert hasattr(self, 'reserved')
-
-        bnet = BayesianNetwork(self.ontology[self.root]['name'])
-        hidden_nodes = {}
-        observed_nodes = {}
-        classes = [('1','0')]
-        for term in terms:
-            children = sorted(self.ontology[term]['children'])
-            cpd_hidden = [[*x, 1.0] for x in product(*classes*(len(children)+2))]
-            node_hidden = ConditionalProbabilityTable(cpd_hidden, [hidden_nodes[child] for child in children])
-
-            cpd_observed = [[*x, 1.0] for x in product(*classes*2)]
-            node_observed = ConditionalProbabilityTable(cpd_observed, [node_hidden])
-            hidden_nodes[term] = node_hidden
-            observed_nodes[term] = node_observed
-            print(term, "observed:")
-            print(node_observed)
-            print(term, "hidden:")
-            print(node_hidden)
-                
-            #state = State(node, name = self.ontology[term]['name'])
-            #bnet.add_state(state)
-
-
-
-        return
-        genes = [*self.reserved.dataset]
-        #terms = [*self.ontology.keys()]
-        labels = [
-                [(t in assocTerms) for t in terms]
-                for gene, assocTerms
-                in ((gene, tuple(self.reserved.inverseAssoc(gene))) for gene in  genes)]
-        labels = np.array(labels, dtype=bool)
-        for i in range(8):
-            X_train, X_test, y_train, y_test = cross_validation.train_test_split(genes, labels)
-            clfs = zip(*classifiers)
-            for clftype in clfs:
-                pass
-                # Potřebujeme další validační množinu označenou treelikerem
