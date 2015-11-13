@@ -48,7 +48,7 @@ def pack_function_for_map(target_function, items, *args, **kwargs):
 
 def parallel_map_dill(workers, function, iterable):
     pool = multiprocessing.Pool(processes=workers)
-    return pool.map(*pack_function_for_map(function, iterable))
+    return pool.imap(*pack_function_for_map(function, iterable))
 
 def flipdict(d):
     new = defaultdict(dict)
@@ -56,4 +56,3 @@ def flipdict(d):
         for s, r in v.items():
             new[s][k] = r
     return new
-

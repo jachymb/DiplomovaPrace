@@ -24,7 +24,7 @@ import sys
 
 __all__ = ['readArff', 'learningTest']
 
-VALIDATION_RATIO = 0.0
+VALIDATION_RATIO = 0.5
 POSTIVE_LABEL = 0
 NEGATIVE_LABEL = 1
 def readArff(filename):
@@ -59,14 +59,30 @@ def readArff(filename):
             labels.append(classes[record[-1]])
             data.append([int(x) for x in record[:-1]])
     return numpy.array(data, dtype=float), numpy.array(labels), classes
-DummyClassifier
+
+# sort of hack
+def getGenes(cvdir):
+    with (cvdir /'dataset.txt').open() as f:
+        genes = [re.sub(r'.*?proteinName\((.*?)\).*',r'\1', x.strip()) for x in f]
+    fold = 0
+    def getIndexes(s):
+        return {int(x) for x in re.search("([0-9]+,)+[0-9]+",s).group().split(",")}
+    with (cvdir / 'batch.treeliker').open() as f:
+        for line in f:
+            if line.startswith('set(output,'):
+                trainIndices = getIndexes(next(f))
+                testIndices = getIndexes(next(f))
+                yield [x for i,x in enumerate(genes) if i in trainIndices], [x for i,x in enumerate(genes) if i in testIndices]
+                fold += 1
+                
+
 legendprop = {'size': 10}
 def plotRoc(clfName, folds, outdir):
     mean_tpr = 0.0
     mean_fpr = numpy.linspace(0, 1, 100)
     all_tpr = []
     plt.clf()
-    for i, (clf, X_test, y_test, _, _) in enumerate(folds):
+    for i, (clf, X_test, y_test, _, _, _, _,_,_,_) in enumerate(folds):
 
         probabs = clf.predict_proba(X_test)
         try:
@@ -103,7 +119,7 @@ def plotPrc(clfName, folds, outdir):
     y_tests = []
     y_scores = []
     plt.clf()
-    for i, (clf, X_test, y_test, _, _) in enumerate(folds):
+    for i, (clf, X_test, y_test, _, _, _, _,_,_,_) in enumerate(folds):
         try:
             y_score = clf.decision_function(X_test)
         except AttributeError:
@@ -135,16 +151,27 @@ def plotPrc(clfName, folds, outdir):
 
     plt.savefig(str(outdir/(clfName.replace(" ","_")+'_precision-recall.png')))
 
-def plotPCA(X_train, y_train, outdir):
-    target_names = ["pos","neg"]
+def plotPCA(X_train, y_train, X_test, y_test, outdir):
+    target_names = ("Positive","Negative")
+    term = outdir.parent.name.replace("_", " ")
     pca = PCA(n_components=2)
-    X_r = pca.fit(X_train).transform(X_train)
-    plt.clf()
-    for c, i, target_name in zip("rg", [0, 1], target_names):
-        plt.scatter(X_r[y_train == i, 0], X_r[y_train == i, 1], c=c, label=target_name)
-    plt.legend()
-    plt.title('PCA')
-    plt.savefig(str(outdir/'pca.png'))
+    pca.fit(X_train)
+    for X, y, n in ((X_train, y_train, 'training'), (X_test, y_test, 'testing')):
+        X_r = pca.transform(X)
+        plt.clf()
+        for c, i, target_name in zip("rg", (0, 1), target_names):
+            plt.scatter(X_r[y == i, 0], X_r[y == i, 1],
+                    c = c,
+                    label = target_name,
+                    marker = ",",
+                    s = 1,#0.8,#1/numpy.sqrt(2),
+                    #edgecolors='none',
+                    linewidth = 0,
+                    alpha = 0.7)
+        plt.legend()
+        plt.title('PCA for %s on %s data' % (term, n))
+        plt.savefig(str(outdir/('pca-%s.png' % n)))
+        plt.savefig(str(outdir/('pca-%s.ps' % n)))
 
 def plotLDA(X_train, X_test, y_train, y_test, outdir):
     target_names = ["pos","neg"]
@@ -195,7 +222,7 @@ def learningTest(cvdir):
             file = output)
 
         alldata = defaultdict(list)
-        for i in range(NUM_FOLDS): # NUM_FOLDS
+        for i, (g_train, g_test) in zip(range(NUM_FOLDS), getGenes(cvdir)) :
             foldDir = cvdir / str(i)
             train = foldDir / 'train.arff'
             test = foldDir / 'test.arff'
@@ -204,7 +231,12 @@ def learningTest(cvdir):
             X_train, y_train, _ = readArff(train)
             X_test , y_test,  _ = readArff(test)
 
-            plotPCA(X_train, y_train, foldDir)
+            splitIndex = round(len(y_test)*VALIDATION_RATIO)
+            assert len(g_test) == len(y_test)
+            X_validation, y_validation, g_validation = X_test[:splitIndex], y_test[:splitIndex], g_test[:splitIndex]
+            X_test, y_test, g_test = X_test[splitIndex:], y_test[splitIndex:], g_test[splitIndex:]
+
+            plotPCA(X_train, y_train, X_test, y_test, foldDir)
             #plotLDA(X_train, X_test, y_train, y_test, foldDir)
 
             for name, Clf in clasfifiers:
@@ -223,9 +255,6 @@ def learningTest(cvdir):
                 X_train = scaler.fit_transform(X_train)
                 X_test = scaler.transform(X_test, copy=True)
 
-                splitIndex = round(len(y_test)*VALIDATION_RATIO)
-                X_validation, y_validation = X_test[:splitIndex], y_test[:splitIndex]
-                clf.validation = X_test[splitIndex:], y_test[splitIndex:]
                
 
                 pos = (y_train == POSTIVE_LABEL)
@@ -250,16 +279,16 @@ def learningTest(cvdir):
                     conf = numpy.array([[conf[0][0], 0],[0,0]])
                 print("Fold %d score: %.2f, confusion matrix: %s" % (i, score*100.0, conf.tolist()), file=output)
                 clf.conf = conf
-                clf.cvindex = i
+                clf.fold = i
                 clf.name = name
-                alldata[name].append((clf, X_train, y_train, X_test, y_test))
+                alldata[name].append((clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation))
        
         for clfName, folds in alldata.items():
             plotRoc(clfName, folds, cvdir)
             plotPrc(clfName, folds, cvdir)
 
             # Musí to být tady, protože funkce výše mohou objekt ještě upravovat
-            for i, (clf,_,_,_,_) in enumerate(folds):
+            for i, (clf,_,_,_,_,_,_,_,_,_) in enumerate(folds):
                 foldDir = cvdir / str(i)
                 with (foldDir / (name.replace(' ','_')+'.pickle')).open('wb') as ser:
                     pickle.dump(clf, ser)

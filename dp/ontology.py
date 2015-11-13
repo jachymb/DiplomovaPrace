@@ -57,6 +57,7 @@ class Ontology:
                     ontology[term['id']]['parents'].append(refid)
                 # This is used by Bayes nets
                 ontology[term['id']]['node'] = {} # clfName : node
+                ontology[term['id']]['clf'] = {} # clfName : Classifier
 
         self.ontology = {**ontology}
 
@@ -260,25 +261,27 @@ class Ontology:
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
         #treeliker.runValidation(self.reserved)
         def processTerm(term):
-            return treeliker.runTermTest(term)
+            return term, treeliker.runTermTest(term)
         
         nets = defaultdict(dict)
         allresults = parallel_map_dill(processes, processTerm, terms)
-        for term, learned in zip(terms, allresults):
+        for term, learned in allresults:
             for clfName, folds in learned.items():
 
-                for i, (clf, X_train, y_train, X_test, y_test) in enumerate(folds):
+                for clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_test, g_train, g_validation in folds:
+                    i = clf.fold
                     if clfName in nets[i]:
                         net = nets[i][clfName]
                     else:
-                        net = BayesNet(clfName, self)
+                        net = BayesNet(i, clfName, self)
                         nets[i][clfName] = net
+                    print(i,net.fold)
 
-                    net.generateCPD(term, clf, X_train, y_train, X_test, y_test) 
-                #TODO
+                    net.generateCPD(term, clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation) 
 
-        for i, byClf in nets.items():
+        for i, byClf in sorted(nets.items()):
             for clfName, net in byClf.items():
                 net.bake()
+                net.predict()
         debug("Finished complete test.")
 
