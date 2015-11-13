@@ -12,40 +12,15 @@ __all__ = ["TreeLikerWrapper"]
 
 class TreeLikerWrapper:
     maxMemory = None
+    rerun = False
     def __init__(self, ontology, treeliker, template):
         self.ontology = ontology
         self.treeliker = str(Path(treeliker).resolve())
         self.template = template
 
-    def runValidation(self, dataset):
-        validationPath = RESULTS / 'validation.txt'
-        with validationPath.open('w') as output:
-            self.ontology.generateDataset(self.ontology.root, output, associations=dataset, maxPositive = len(dataset[self.ontology.root]))
-
-        arff = 'validation.arff'
-
-        batchPath = RESULTS / 'validation.treeliker'
-        batchFile = "set(algorithm, relf_grounding_counting)\n" \
-                    "set(output_type, single)\n" \
-                    "set(output, '%s')\n" \
-                    "set(examples, '%s')\n" \
-                    "set(template, [%s])\n" \
-                    "work(yes)\n"
-                    # covered_class shouldn't be used here!
- 
-        batchFile %= (
-                arff,
-                validationPath.name,
-                self.template)
-
-        with batchPath.open('w') as bf:
-            bf.write(batchFile)
-
-        self._runTreeLiker(RESULTS, batchPath)
-
-        return RESULTS / arff
-
     def _runTreeLiker(self, resultPath, batchPath):
+        if not self.rerun and (resultPath / '0' / 'test.arff').is_file():
+            return
         cmd = ["java", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name]
         if self.maxMemory is not None:
             cmd.insert(1, '-Xmx'+self.maxMemory)

@@ -281,17 +281,19 @@ def learningTest(cvdir):
                 clf.conf = conf
                 clf.fold = i
                 clf.name = name
+                clf.cvdir = cvdir
+
                 alldata[name].append((clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation))
        
-        for clfName, folds in alldata.items():
-            plotRoc(clfName, folds, cvdir)
-            plotPrc(clfName, folds, cvdir)
+        #for clfName, folds in alldata.items():
+        #    plotRoc(clfName, folds, cvdir)
+        #    plotPrc(clfName, folds, cvdir)
 
             # Musí to být tady, protože funkce výše mohou objekt ještě upravovat
-            for i, (clf,_,_,_,_,_,_,_,_,_) in enumerate(folds):
-                foldDir = cvdir / str(i)
-                with (foldDir / (name.replace(' ','_')+'.pickle')).open('wb') as ser:
-                    pickle.dump(clf, ser)
+        #    for i, (clf,_,_,_,_,_,_,_,_,_) in enumerate(folds):
+        #        foldDir = cvdir / str(i)
+        #        with (foldDir / (name.replace(' ','_')+'.pickle')).open('wb') as ser:
+        #            pickle.dump(clf, ser)
     debug("Finished learning in node %s." % cvdir.name) 
     return alldata
             

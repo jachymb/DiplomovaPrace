@@ -56,8 +56,8 @@ class Ontology:
                     ontology[refid]['children'].append(term['id'])
                     ontology[term['id']]['parents'].append(refid)
                 # This is used by Bayes nets
-                ontology[term['id']]['node'] = {} # clfName : node
-                ontology[term['id']]['clf'] = {} # clfName : Classifier
+                ontology[term['id']]['node'] = defaultdict(dict) # fold : clfName : node
+                ontology[term['id']]['clf'] = defaultdict(dict) # fold : clfName : Classifier
 
         self.ontology = {**ontology}
 
@@ -197,56 +197,6 @@ class Ontology:
                     e = '"%s" %s' % (term, repg)
                     print(e, file=output)
 
-    #def generateExamples(self, term, output, associations, maxAssociations = None):
-     #    """Generates examples from genes associated with the term in logical reprentation in the pseudo-prolog syntax. """
-     #   def getRecord(geneName):
-     #       try:
-     #           gene = self.geneFactory.getGene(geneName)
-     #           e = '"%s" %s' % (term, ", ".join(gene.logicalRepresentation()))
-     #           print(e, file=output, flush=True)
-     #           #if pbar is not None:
-     #           #    pbar.update(pbar.currval + 1)
-     #       except Exception as exc:
-     #           traceback.print_exc()
-
-     #   genes = sorted(associations[term])
-     #   #genes = list(genes)
-     #   random.shuffle(genes)
-     #   genes = genes[:maxAssociations]
-     #   for i,gene in enumerate(genes):
-     #       getRecord(gene)
-     #       #debug("%s %d/%d" %(self[term]['name'] if not term.startswith('~') else term,i,maxAssociations))
-     #   #with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-     #       #executor.map(getRecord, genes)
-            #for future in concurrent.futures.as_completed(s):
-            #    debug("Future completed. " + str(future))
-            #    if future.exception() is not None:
-            #        debug("Exception: " + future.exception())
-
-    #def generateDataset(self, term, output, maxPositive = None, maxNegative = None, associations = None):
-    #    """Generate whole dataset directly usable for learning. The terms are used as learning classes."""
-    #    # FIXME: Remove maxNegative parameter
-    #    if associations is None:
-    #        associations = self.associations
-
-    #    totalPos = len(associations[term]) if maxPositive is None else min(maxPositive, len(associations[term]))
-    #    maxNegative = round(totalPos / associations.getRatio(term))
-    #    totalNeg = len(associations['~'+term]) if maxPositive is None else min(maxNegative, len(associations['~'+term]))
-    #    total = totalPos + totalNeg
-    #    termname = self[term]['name'] if not term.startswith('~') else termname
-    #    debug("Generating dataset for term: %s. Using %d postive and %d negative examples." % (termname, totalPos, totalNeg))
-        #if dp.utils.verbosity >= 2:
-            #pbar = progressbar.ProgressBar(maxval=total, widgets = (
-            #    progressbar.Bar(), ' ', progressbar.Counter(), '/'+str(total), ' =', progressbar.Percentage()))
-            #pbar.start()
-        #else:
-            #pbar = None
-    #    self.generateExamples(    term, output, associations, maxPositive)
-    #    self.generateExamples('~'+term, output, associations, maxNegative)
-        #if dp.utils.verbosity >= 2:
-        #    pbar.finish()
-    #    debug("Finished generating dataset for term: %s" % (termname))
-
     def getTermByName(self, name):
         """Returns human-readable name of the given GO term."""
         for k,v in self.ontology.items():
@@ -259,7 +209,6 @@ class Ontology:
         bestClassifiers = []
         terms = self.termsByDepth() # This sorting is needed later in bnet learning
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
-        #treeliker.runValidation(self.reserved)
         def processTerm(term):
             return term, treeliker.runTermTest(term)
         
@@ -275,7 +224,6 @@ class Ontology:
                     else:
                         net = BayesNet(i, clfName, self)
                         nets[i][clfName] = net
-                    print(i,net.fold)
 
                     net.generateCPD(term, clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation) 
 

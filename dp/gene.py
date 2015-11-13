@@ -86,7 +86,7 @@ class Gene:
 
     XML_URL = "http://www.rcsb.org/pdb/files/%s.xml.gz"
     recalculateDists = False
-
+    __slots__ = ["name", "structure", "sequence", "distances"]
     def __init__(self, name, sequence, structure, distances = None):
         self.name = name
         self.structure = structure
