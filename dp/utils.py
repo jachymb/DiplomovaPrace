@@ -24,16 +24,6 @@ def debug(s, end=True):
     if verbosity > 0:
         print(s, file=sys.stderr, end = "\n" if end else "", flush=True)
 
-@contextmanager
-def in_directory(path):
-    pwd = os.path.abspath(os.curdir)
-    path = Path(path)
-    if not path.is_dir():
-        path.mkdir()
-    os.chdir(str(path))
-    yield
-    os.chdir(pwd)
-
 # Inspired by http://stackoverflow.com/questions/8804830/python-multiprocessing-pickling-error
 def apply_packed_function_for_map(args):
     dumped_function, item, args, kwargs = args

@@ -217,7 +217,7 @@ class Ontology:
         for term, learned in allresults:
             for clfName, folds in learned.items():
 
-                for clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_test, g_train, g_validation in folds:
+                for clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation in folds:
                     i = clf.fold
                     if clfName in nets[i]:
                         net = nets[i][clfName]

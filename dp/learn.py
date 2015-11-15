@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from collections import Counter, defaultdict
-from dp.utils import NUM_FOLDS, in_directory, debug
+from dp.utils import NUM_FOLDS, debug
 from pathlib import Path
 from scipy import interp
 from sklearn.dummy import DummyClassifier
@@ -230,11 +230,12 @@ def learningTest(cvdir):
 
             X_train, y_train, _ = readArff(train)
             X_test , y_test,  _ = readArff(test)
+            assert len(g_train) == len(y_train) and len(g_test) == len(y_test)
 
             splitIndex = round(len(y_test)*VALIDATION_RATIO)
-            assert len(g_test) == len(y_test)
             X_validation, y_validation, g_validation = X_test[:splitIndex], y_test[:splitIndex], g_test[:splitIndex]
             X_test, y_test, g_test = X_test[splitIndex:], y_test[splitIndex:], g_test[splitIndex:]
+            assert len(g_train) == len(y_train) and len(g_test) == len(y_test)
 
             plotPCA(X_train, y_train, X_test, y_test, foldDir)
             #plotLDA(X_train, X_test, y_train, y_test, foldDir)

@@ -34,35 +34,33 @@ class BayesNet:
 
         labels = {l : PRIOR for l in product(*(('0','1'),)*(len(children)+1))}
         if children:
-            for gene in g_train:
+            for gene,y in zip(g_train, y_train):
                 event = []
                 for child in children:
-                    event.append('0' if child in self.ontology.associations[term] else '1')
-                event.append('0' if term in self.ontology.associations[term] else '1')
+                    event.append('0' if gene in self.ontology.associations[child] else '1')
+                event.append('0' if gene in self.ontology.associations[term] else '1')
+                assert (gene in self.ontology.associations[term]) == (y == POSTIVE_LABEL)
                 event = tuple(event)
 
                 labels[event] += 1
-
-            total = len(g_train) + len(labels)*PRIOR
-
+            cprior = PRIOR * (2 ** len(children))
             hidden = ConditionalProbabilityTable(
                         [
-                            list(event) + [counted/total] # if term != root else {'0':1.,'1':0.}[event[0]]]
+                            list(event) + [counted/(cprior+(posTrain if event[-1] == '0' else negTrain))] # if term != root else {'0':1.,'1':0.}[event[0]]]
+                            #list(event) + [counted/total] # if term != root else {'0':1.,'1':0.}[event[0]]]
                             for event, counted in labels.items()],
                         [node.distribution for node in childNodes])
 
-
         else: #No children
             hidden = DiscreteDistribution({'0': posTrain / totalTrain, '1': negTrain / totalTrain})
-        hidden.freeze()
+
+        #print("Hidden node %s:" % term)
+        #print(hidden)
+        #hidden.freeze()
         hidden = State(hidden, name=self.chname("H"+term))
 
-        for child in children:
-            childNode = self.ontology[child]['node'][self.fold][self.clfName]
-            #self.network.add_transition(hidden, childNode)
-            self.network.add_transition(childNode, hidden)
-
-        posTest, negTest = numpy.sum(clf.conf + PRIOR, 1) 
+        clf.conf += PRIOR
+        posTest, negTest = numpy.sum(clf.conf, 1) 
         
         observed = ConditionalProbabilityTable([
                 ['0', '0', clf.conf[0][0] / posTest], # if term != root else 1.],
@@ -70,12 +68,17 @@ class BayesNet:
                 ['0', '1', clf.conf[1][0] / negTest], # if term != root else 0.],
                 ['1', '1', clf.conf[1][1] / negTest]], #if term != root else 1.]],
             [hidden.distribution])
-        observed.freeze()
+        #observed.freeze()
+        #print("Observed node %s:" % term)
+        #print(observed)
         observed = State(observed, name=self.chname(term))
 
         self.network.add_states([hidden, observed])
         self.network.add_transition(hidden, observed)
-        #self.network.add_transition(observed, hidden)
+        for child in children:
+            childNode = self.ontology[child]['node'][self.fold][self.clfName]
+            self.network.add_transition(childNode, hidden)
+
 
         self.ontology[term]['node'][self.fold][self.clfName] = hidden
         self.ontology[term]['clf'][self.fold][self.clfName] = clf, X_validation, y_validation, g_validation
@@ -97,12 +100,14 @@ class BayesNet:
                 self.chname(term) : clf.predict(X)
                 for term, (clf, X, y, g)
                 in classifiers.items()}
+        print("observations:")
         print(observations)
-        true = {
+        gt = {
                 self.chname(term) : y
                 for term, (clf, X, y, g)
                 in classifiers.items()}
-        print(true)
+        print("gt:")
+        print(gt)
 
         for i in range(self.lenValidation):
             observation = {term : str(pred[i]) for term,pred in observations.items()}
@@ -119,6 +124,7 @@ class BayesNet:
                 self.predictions[term][i][0] = distribution[0]['0']
                 self.predictions[term][i][1] = distribution[0]['1']
     
+        print("predictions:")
         print(self.predictions)
 
     def nodeAsClf(self, term):

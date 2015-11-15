@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from sklearn import cross_validation
 from dp.learn import learningTest
-from dp.utils import in_directory, debug, RESULTS, getTermPath, NUM_FOLDS, TEST_SIZE
+from dp.utils import debug, RESULTS, getTermPath, NUM_FOLDS, TEST_SIZE
 import dp
 import sys
 
@@ -12,7 +12,7 @@ __all__ = ["TreeLikerWrapper"]
 
 class TreeLikerWrapper:
     maxMemory = None
-    rerun = False
+    rerun = True
     def __init__(self, ontology, treeliker, template):
         self.ontology = ontology
         self.treeliker = str(Path(treeliker).resolve())
@@ -26,7 +26,7 @@ class TreeLikerWrapper:
             cmd.insert(1, '-Xmx'+self.maxMemory)
 
         debug("Starting treeliker for "+resultPath.name)
-        with in_directory(resultPath), subprocess.Popen(cmd, stdout = subprocess.PIPE, bufsize = 1, universal_newlines=True) as treelikerProc:
+        with subprocess.Popen(cmd, stdout = subprocess.PIPE, bufsize = 1, universal_newlines=True, cwd=str(resultPath)) as treelikerProc:
             prev = 0
             i = 1
             for _line in treelikerProc.stdout:
@@ -34,7 +34,8 @@ class TreeLikerWrapper:
                 if _line.startswith('Fold') and dp.utils.verbosity == 1:
                     debug("%s: %s" % (batchPath.name, _line))
                 elif dp.utils.verbosity >= 2:
-                    debug(line.ljust(prev), end=_line.startswith('Fold'))
+                    #debug(line.ljust(prev), end=_line.startswith('Fold'))
+                    debug(_line.strip())
                 prev = len(line)
                 if _line.startswith('Processing'):
                     i+=1
@@ -53,6 +54,7 @@ class TreeLikerWrapper:
         datasetPath = resultPath / 'dataset.txt'
 
         batchFile = "set(algorithm, relf_grounding_counting)\n" \
+                    "set(verbosity, 0)\n" \
                     "set(output_type, train_test)\n" \
                     "set(examples, '%s')\n" \
                     "set(template, [%s])\n" \
