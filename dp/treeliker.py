@@ -12,7 +12,7 @@ __all__ = ["TreeLikerWrapper"]
 
 class TreeLikerWrapper:
     maxMemory = None
-    rerun = True
+    rerun = False
     def __init__(self, ontology, treeliker, template):
         self.ontology = ontology
         self.treeliker = str(Path(treeliker).resolve())
@@ -26,6 +26,8 @@ class TreeLikerWrapper:
             cmd.insert(1, '-Xmx'+self.maxMemory)
 
         debug("Starting treeliker for "+resultPath.name)
+        if not resultPath.is_dir():
+            resultPath.mkdir()
         with subprocess.Popen(cmd, stdout = subprocess.PIPE, bufsize = 1, universal_newlines=True, cwd=str(resultPath)) as treelikerProc:
             prev = 0
             i = 1

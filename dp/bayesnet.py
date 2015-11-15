@@ -43,10 +43,13 @@ class BayesNet:
                 event = tuple(event)
 
                 labels[event] += 1
+            def countBoth(event):
+                return labels[event[:-1]+('0',)] + labels[event[:-1]+('1',)]
             cprior = PRIOR * (2 ** len(children))
             hidden = ConditionalProbabilityTable(
                         [
-                            list(event) + [counted/(cprior+(posTrain if event[-1] == '0' else negTrain))] # if term != root else {'0':1.,'1':0.}[event[0]]]
+                            list(event) + [counted/countBoth(event)] # if term != root else {'0':1.,'1':0.}[event[0]]]
+                            #list(event) + [counted/(cprior+(posTrain if event[-1] == '0' else negTrain))] # if term != root else {'0':1.,'1':0.}[event[0]]]
                             #list(event) + [counted/total] # if term != root else {'0':1.,'1':0.}[event[0]]]
                             for event, counted in labels.items()],
                         [node.distribution for node in childNodes])
@@ -54,23 +57,23 @@ class BayesNet:
         else: #No children
             hidden = DiscreteDistribution({'0': posTrain / totalTrain, '1': negTrain / totalTrain})
 
-        #print("Hidden node %s:" % term)
-        #print(hidden)
+        print("Hidden node %s:" % term)
+        print(hidden)
         #hidden.freeze()
         hidden = State(hidden, name=self.chname("H"+term))
 
-        clf.conf += PRIOR
-        posTest, negTest = numpy.sum(clf.conf, 1) 
+        conf = clf.conf + PRIOR
+        posTest, negTest = numpy.sum(conf, 1) 
         
         observed = ConditionalProbabilityTable([
-                ['0', '0', clf.conf[0][0] / posTest], # if term != root else 1.],
-                ['1', '0', clf.conf[0][1] / posTest], # if term != root else 0.],
-                ['0', '1', clf.conf[1][0] / negTest], # if term != root else 0.],
-                ['1', '1', clf.conf[1][1] / negTest]], #if term != root else 1.]],
+                ['0', '0', conf[0][0] / posTest], # if term != root else 1.],
+                ['0', '1', conf[0][1] / posTest], # if term != root else 0.],
+                ['1', '0', conf[1][0] / negTest], # if term != root else 0.],
+                ['1', '1', conf[1][1] / negTest]], #if term != root else 1.]],
             [hidden.distribution])
         #observed.freeze()
-        #print("Observed node %s:" % term)
-        #print(observed)
+        print("Observed node %s:" % term)
+        print(observed)
         observed = State(observed, name=self.chname(term))
 
         self.network.add_states([hidden, observed])
@@ -100,14 +103,14 @@ class BayesNet:
                 self.chname(term) : clf.predict(X)
                 for term, (clf, X, y, g)
                 in classifiers.items()}
-        print("observations:")
-        print(observations)
+        #print("observations:")
+        #print(observations)
         gt = {
                 self.chname(term) : y
                 for term, (clf, X, y, g)
                 in classifiers.items()}
-        print("gt:")
-        print(gt)
+        #print("gt:")
+        #print(gt)
 
         for i in range(self.lenValidation):
             observation = {term : str(pred[i]) for term,pred in observations.items()}
@@ -121,19 +124,24 @@ class BayesNet:
                 term = state.name[1:]
                 distribution = belief.parameters
                 #print(distribution)
-                self.predictions[term][i][0] = distribution[0]['0']
-                self.predictions[term][i][1] = distribution[0]['1']
+                self.predictions[term][i,0] = distribution[0]['0']
+                self.predictions[term][i,1] = distribution[0]['1']
     
-        print("predictions:")
-        print(self.predictions)
+        #print("predictions:")
+        #print(self.predictions)
+        #for term in observations:
+        #        compare = numpy.empty((len(gt[term]),3), dtype=float)
+        #        compare[:,0] = gt[term]
+        #        compare[:,1] = observations[term]
+        #        compare[:,2] = self.predictions[term][:,1]
+        #        print(term, self.ontology[term]['name'])
+        #        print(compare)
 
     def nodeAsClf(self, term):
         class BayesCLF:
-            def predict_proba(X_test):
-                classifier = self.ontology[term]['clf'][self.fold][self.clfName]
-                res = numpy.empty((self.lenValidation, 2))
-                for i in range(self.lenValidation):
-                    pass
+            cvdir = self.ontology[term]['clf'][self.fold][self.clfName][0].cvdir
+            def predict_proba(*a):
+                return self.predictions[term]
 
         return BayesCLF()
                 

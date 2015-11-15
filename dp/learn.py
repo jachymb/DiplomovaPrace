@@ -75,14 +75,13 @@ def getGenes(cvdir):
                 yield [x for i,x in enumerate(genes) if i in trainIndices], [x for i,x in enumerate(genes) if i in testIndices]
                 fold += 1
                 
-
 legendprop = {'size': 10}
-def plotRoc(clfName, folds, outdir):
+def plotRoc(clfName, folds):
     mean_tpr = 0.0
     mean_fpr = numpy.linspace(0, 1, 100)
     all_tpr = []
-    plt.clf()
-    for i, (clf, X_test, y_test, _, _, _, _,_,_,_) in enumerate(folds):
+    #plt.clf()
+    for i, (clf, X_train, y_train, X_test, y_test, X_validation, y_validation,_,_,_) in enumerate(folds):
 
         probabs = clf.predict_proba(X_test)
         try:
@@ -113,7 +112,7 @@ def plotRoc(clfName, folds, outdir):
     plt.ylabel('True Positive Rate')
     plt.title('Receiver operating characteristic: '+clfName)
     plt.legend(loc="lower right", prop=legendprop)
-    plt.savefig(str(outdir/(clfName.replace(" ","_")+'_roc.png')))
+    #plt.savefig(str(outdir/(clfName.replace(" ","_")+'_roc.png')))
 
 def plotPrc(clfName, folds, outdir):
     y_tests = []
@@ -232,6 +231,9 @@ def learningTest(cvdir):
             X_test , y_test,  _ = readArff(test)
             assert len(g_train) == len(y_train) and len(g_test) == len(y_test)
 
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test, copy=True)
+
             splitIndex = round(len(y_test)*VALIDATION_RATIO)
             X_validation, y_validation, g_validation = X_test[:splitIndex], y_test[:splitIndex], g_test[:splitIndex]
             X_test, y_test, g_test = X_test[splitIndex:], y_test[splitIndex:], g_test[splitIndex:]
@@ -253,11 +255,6 @@ def learningTest(cvdir):
                     y_train = - y_train
                     y_test = - y_test
 
-                X_train = scaler.fit_transform(X_train)
-                X_test = scaler.transform(X_test, copy=True)
-
-               
-
                 pos = (y_train == POSTIVE_LABEL)
                 neg = (y_train == NEGATIVE_LABEL)
                 posWeight = numpy.sum(neg) / len(y_train)
@@ -265,11 +262,16 @@ def learningTest(cvdir):
                 sample_weight = posWeight*pos + negWeight*neg
 
                 try:
-                    clf.fit(X_train, y_train, sample_weight = sample_weight)
+                    clf.fit(X_train, y_train)
+                    #clf.fit(X_train, y_train, sample_weight = sample_weight)
                 except TypeError:
                     clf.fit(X_train, y_train)
 
                 y_pred = clf.predict(X_test)
+                #compare = numpy.empty((len(y_pred),2))
+                #compare[:,0] = y_test
+                #compare[:,1] = y_pred
+                #print(compare)
                 pos = (y_test == POSTIVE_LABEL)
                 neg = (y_test == NEGATIVE_LABEL)
                 #prec = precision_score(y_test, y_pred, average='weighted')

@@ -2,8 +2,9 @@ from collections import defaultdict
 from contextlib import ExitStack
 from dp.bayesnet import BayesNet
 from dp.gene import GeneFactory
+from dp.learn import plotRoc
 from dp.treeliker import TreeLikerWrapper
-from dp.utils import debug, parallel_map_dill, getTermPath
+from dp.utils import debug, parallel_map_dill, getTermPath, RESULTS
 from itertools import groupby, product
 from pathlib import Path
 import dp.utils
@@ -13,6 +14,7 @@ import random
 import subprocess
 import sys
 import traceback
+import matplotlib.pyplot as plt
 
 __all__ = ["Onotology"]
 
@@ -213,10 +215,9 @@ class Ontology:
             return term, treeliker.runTermTest(term)
         
         nets = defaultdict(dict)
-        allresults = parallel_map_dill(processes, processTerm, terms)
+        allresults = tuple(parallel_map_dill(processes, processTerm, terms))
         for term, learned in allresults:
             for clfName, folds in learned.items():
-
                 for clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation in folds:
                     i = clf.fold
                     if clfName in nets[i]:
@@ -231,5 +232,18 @@ class Ontology:
             for clfName, net in byClf.items():
                 net.bake()
                 net.predict()
+
+        debug("Generating plots.")
+        for term, learned in allresults:
+            for clfName, folds in learned.items():
+                cvdir = folds[0][0].cvdir
+                folds2 = [(nets[i][clfName].nodeAsClf(term),)+f[1:] for i,f in enumerate(folds)]
+                plt.clf()
+                plt.subplot(211)
+                plotRoc(clfName, folds)
+                plt.subplot(212)
+                plotRoc("Bayes correction", folds2)
+                plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.png')))
+                plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.ps')))
         debug("Finished complete test.")
 
