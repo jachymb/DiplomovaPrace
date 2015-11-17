@@ -21,6 +21,7 @@ class BayesNet:
         #return name.replace(" ","_").replace(":","")
 
     def generateCPD(self, term, clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation):
+        if term == self.ontology.root: return
         root = self.ontology.root
         
         posTrain = sum(y_train == POSTIVE_LABEL)
@@ -63,12 +64,19 @@ class BayesNet:
         hidden = State(hidden, name=self.chname("H"+term))
 
         conf = clf.conf + PRIOR
-        posTest, negTest = numpy.sum(conf, 1) 
+        #posTest, negTest = numpy.sum(conf, 1) 
+        posTest, negTest = numpy.sum(conf, 0) 
+        print("Confusion matrix:")
+        print(conf)
         
         observed = ConditionalProbabilityTable([
+        #        ['0', '0', conf[0][0] / posTest], # if term != root else 1.],
+        #        ['0', '1', conf[0][1] / posTest], # if term != root else 0.],
+        #        ['1', '0', conf[1][0] / negTest], # if term != root else 0.],
+        #        ['1', '1', conf[1][1] / negTest]], #if term != root else 1.]],
                 ['0', '0', conf[0][0] / posTest], # if term != root else 1.],
-                ['0', '1', conf[0][1] / posTest], # if term != root else 0.],
-                ['1', '0', conf[1][0] / negTest], # if term != root else 0.],
+                ['0', '1', conf[1][0] / posTest], # if term != root else 0.],
+                ['1', '0', conf[0][1] / negTest], # if term != root else 0.],
                 ['1', '1', conf[1][1] / negTest]], #if term != root else 1.]],
             [hidden.distribution])
         #observed.freeze()
@@ -93,9 +101,13 @@ class BayesNet:
 
     def predict(self):
         #print(self.network.graph)
-        self.predictions = {term : numpy.empty((self.lenValidation, 2), dtype=float) for term in self.ontology.ontology}
+        self.predictions = {term : numpy.empty((self.lenValidation, 2), dtype=float) for term in self.ontology.ontology if term != self.ontology.root}
 
-        classifiers = {term : self.ontology[term]['clf'][self.fold][self.clfName] for term in self.ontology.ontology}
+        classifiers = {
+                term : self.ontology[term]['clf'][self.fold][self.clfName]
+                for term
+                in self.ontology.ontology
+                if term != self.ontology.root}
         #for term, (clf,X,y,g) in classifiers.items():
         #    print(term, ":", repr(self.clfName), repr(clf.name), self.fold, clf.fold)
 
@@ -103,14 +115,14 @@ class BayesNet:
                 self.chname(term) : clf.predict(X)
                 for term, (clf, X, y, g)
                 in classifiers.items()}
-        #print("observations:")
-        #print(observations)
+        print("observations:")
+        print(observations)
         gt = {
                 self.chname(term) : y
                 for term, (clf, X, y, g)
                 in classifiers.items()}
-        #print("gt:")
-        #print(gt)
+        print("gt:")
+        print(gt)
 
         for i in range(self.lenValidation):
             observation = {term : str(pred[i]) for term,pred in observations.items()}
@@ -127,8 +139,8 @@ class BayesNet:
                 self.predictions[term][i,0] = distribution[0]['0']
                 self.predictions[term][i,1] = distribution[0]['1']
     
-        #print("predictions:")
-        #print(self.predictions)
+        print("predictions:")
+        print(self.predictions)
         #for term in observations:
         #        compare = numpy.empty((len(gt[term]),3), dtype=float)
         #        compare[:,0] = gt[term]

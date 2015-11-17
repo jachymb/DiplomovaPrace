@@ -31,6 +31,9 @@ PORT=873
 ${RSYNC} -rlpt -v -z --delete --port=$PORT ${SERVER}/derived_data/ derived 2>/dev/null
 ${RSYNC} -rlpt -v -z --delete --port=$PORT ${SERVER}/data/structures/divided/XML/ xml 2>/dev/null
 
+wget http://www.rcsb.org/pdb/files/ss.txt
+wget http://www.rcsb.org/pdb/files/ss_dis.txt
+
 cd obo
 wget -N http://www.geneontology.org/ontology/subsets/goslim_{generic,plant,candida,pir,pombe,yeast,aspergillus,metagenomics,virus,chembl}.obo
 

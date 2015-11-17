@@ -236,7 +236,7 @@ class Gene:
             results.append(("dist", (self.resName(i), self.resName(j), dist)))
 
         #results.sort()
-        return ["%s(%s)" % (head, ", ".join(map(str, args))) for head, args in results] #+ self.backgroundKnowledge
+        return ["%s(%s)" % (head, ", ".join(map(str, args))) for head, args in results] + self.backgroundKnowledge
 
     @staticmethod
     def serializedFileName(name):

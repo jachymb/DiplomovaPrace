@@ -4,6 +4,8 @@ from collections import Counter, defaultdict
 from dp.utils import NUM_FOLDS, debug
 from pathlib import Path
 from scipy import interp
+from itertools import product
+from sklearn.covariance import EllipticEnvelope
 from sklearn.dummy import DummyClassifier
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
@@ -12,7 +14,7 @@ from sklearn import cross_validation
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix, precision_recall_curve, roc_curve, auc, average_precision_score
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.preprocessing import normalize, scale, StandardScaler
+from sklearn.preprocessing import StandardScaler, Normalizer, MaxAbsScaler, RobustScaler
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 from sklearn.svm import SVC
 import csv
@@ -151,15 +153,41 @@ def plotPrc(clfName, folds, outdir):
     plt.savefig(str(outdir/(clfName.replace(" ","_")+'_precision-recall.png')))
 
 def plotPCA(X_train, y_train, X_test, y_test, outdir):
+    #try:
+    #    decision = clf.decision_function
+    #    Vf = numpy.arange(-1.,1.1,0.1)
+    #    V = (0.,)
+    #except AttributeError:
+    #    decision =  lambda x:clf.predict_proba(x)[:,0]
+    #    Vf = numpy.arange(0.,1.05,0.05)
+    #    V = (0.5,)
+    scaler = MaxAbsScaler(copy=False)
     target_names = ("Positive","Negative")
     term = outdir.parent.name.replace("_", " ")
     pca = PCA(n_components=2)
     pca.fit(X_train)
+    scaler.fit(pca.transform(X_train))
+    #delta = 0.025
+    #a=numpy.arange(-1., 1., delta)
+    #b=numpy.arange(-1., 1., delta)
+    #A,B = numpy.meshgrid(a,b)
+    #C=numpy.empty(A.shape)
     for X, y, n in ((X_train, y_train, 'training'), (X_test, y_test, 'testing')):
-        X_r = pca.transform(X)
+        X_r = scaler.transform(pca.transform(X))
+        inlier = (numpy.abs(X_r[:,0]) <= 1) & (numpy.abs(X_r[:,1]) <= 1)
+        #print(X_r)
         plt.clf()
+
+        #for k,l in product(range(len(a)),range(len(b))):
+        #    C[k][l] = decision(pca.inverse_transform(scaler.inverse_transform(((A[k][l],B[k][l]),))))
+        #print(C)
+        #cfp = plt.contourf(A,B,C,Vf,cmap=plt.cm.bone)
+        #cfp.cmap.set_under('black')
+        #cfp.cmap.set_over('white')
+        #plt.contour(A,B,C,V,colors=("b",))
+        #y=clf.predict(X)
         for c, i, target_name in zip("rg", (0, 1), target_names):
-            plt.scatter(X_r[y == i, 0], X_r[y == i, 1],
+            plt.scatter(X_r[(y == i) & inlier, 0], X_r[(y == i) & inlier, 1],
                     c = c,
                     label = target_name,
                     marker = ",",
@@ -169,8 +197,8 @@ def plotPCA(X_train, y_train, X_test, y_test, outdir):
                     alpha = 0.7)
         plt.legend()
         plt.title('PCA for %s on %s data' % (term, n))
-        plt.savefig(str(outdir/('pca-%s.png' % n)))
-        plt.savefig(str(outdir/('pca-%s.ps' % n)))
+        plt.savefig(str(outdir/('pca-%s.png' % (n,))))
+        plt.savefig(str(outdir/('pca-%s.ps' % (n,))))
 
 def plotLDA(X_train, X_test, y_train, y_test, outdir):
     target_names = ["pos","neg"]
@@ -192,9 +220,9 @@ def learningTest(cvdir):
             #("LabelSpreading RBF", LabelSpreading),
             #("LabelSpreading-7nn", lambda: LabelSpreading(kernel='knn')),
             #("LabelPropagation-7nn", lambda: LabelPropagation(kernel='knn')),
-            #! ("AdaBoost-DecisionTree", AdaBoostClassifier),
+            #!("AdaBoost-DecisionTree", AdaBoostClassifier),
             #("5-NN", lambda: KNeighborsClassifier(p=1, algorithm='kd_tree')),
-            #! ("Random Forest", RandomForestClassifier),
+            #!("Random Forest", RandomForestClassifier),
             #("SGD", lambda: SGDClassifier(n_iter=100,alpha=0.01,loss="modified_huber")),
             ("RBF SVM C=1", lambda: SVC(shrinking=False, tol=1e-5,probability=True)),
             #("RBF SVM C=0.5", lambda : SVC(C=0.1,probability=True)),
@@ -205,7 +233,7 @@ def learningTest(cvdir):
             #("Cubic SVM C=1", lambda: SVC(kernel='poly', degree=3,probability=True)),
             )
 
-    scaler = StandardScaler()
+    scaler = StandardScaler(copy=False)
     with (cvdir / 'scores.txt').open('w') as output:
         print('Cross Validation results for file term %s:' % cvdir.name, file=output)
         print('Confusion Matrix: [[True positive, False postive], [False negative, True negative]]', file=output)
@@ -231,15 +259,26 @@ def learningTest(cvdir):
             X_test , y_test,  _ = readArff(test)
             assert len(g_train) == len(y_train) and len(g_test) == len(y_test)
 
-            X_train = scaler.fit_transform(X_train)
-            X_test = scaler.transform(X_test, copy=True)
+            # Preprocess
+            #envelope = EllipticEnvelope(contamination=0.05)
+            #envelope.fit(X_train)
+            #inliers = envelope.predict(X_train) == 1
 
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
+            norms = [numpy.linalg.norm(x) for x in X_train]
+            #print(numpy.mean(norms))
+            #print(numpy.median(norms))
+            #print(numpy.max(norms))
+            #print(numpy.min(norms))
+            #print(numpy.sqrt(numpy.cov(norms)))
+
+            plotPCA(X_train, y_train, X_test, y_test, foldDir)
             splitIndex = round(len(y_test)*VALIDATION_RATIO)
             X_validation, y_validation, g_validation = X_test[:splitIndex], y_test[:splitIndex], g_test[:splitIndex]
             X_test, y_test, g_test = X_test[splitIndex:], y_test[splitIndex:], g_test[splitIndex:]
             assert len(g_train) == len(y_train) and len(g_test) == len(y_test)
 
-            plotPCA(X_train, y_train, X_test, y_test, foldDir)
             #plotLDA(X_train, X_test, y_train, y_test, foldDir)
 
             for name, Clf in clasfifiers:
@@ -262,8 +301,8 @@ def learningTest(cvdir):
                 sample_weight = posWeight*pos + negWeight*neg
 
                 try:
-                    clf.fit(X_train, y_train)
-                    #clf.fit(X_train, y_train, sample_weight = sample_weight)
+                    #clf.fit(X_train, y_train)
+                    clf.fit(X_train, y_train, sample_weight = sample_weight)
                 except TypeError:
                     clf.fit(X_train, y_train)
 
