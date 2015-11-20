@@ -3,7 +3,7 @@ import gzip
 import xml.etree.ElementTree as ElementTree
 import re
 import operator
-from dp.utils import debug
+from dp.utils import debug, parseFasta
 from pathlib import Path
 from collections import defaultdict
 from urllib.request import urlopen, Request
@@ -12,6 +12,7 @@ __all__ = ["GeneFactory", "Gene"]
 
 PICKLEDIR = Path('data/serialized_genes')
 XMLDIR = Path('data/xml')
+SS = Path('data/ss.txt')
 
 MAPPING = {
         'A' : 'ala',
@@ -42,6 +43,16 @@ MAPPING = {
         'V' : 'val',
         'Z' : 'glx', # Glutamine or glutamic acid
         }
+
+MAPPING_SS = {
+        'T': 'turn',
+        'G': 'helix_3_10',
+        'S': 'bend',
+        'H': 'alpha_helix',
+        'E': 'beta_stand',
+        'B': 'beta_bridge',
+        'I': 'pi_helix',
+        ' ': None}
 
 IGNORE = (None, 'sec', 'pyl')
 #IGNORE = (None,)
@@ -86,8 +97,10 @@ class Gene:
 
     XML_URL = "http://www.rcsb.org/pdb/files/%s.xml.gz"
     recalculateDists = False
-    __slots__ = ["name", "structure", "sequence", "distances"]
-    def __init__(self, name, sequence, structure, distances = None):
+
+    ss = dict(parseFasta(SS))
+    __slots__ = ["name", "structure", "sequence", "distances", "secstr"]
+    def __init__(self, name, sequence, structure, distances = None, secstr = None):
         self.name = name
         self.structure = structure
         self.sequence = sequence
@@ -95,7 +108,27 @@ class Gene:
         self.distances = tuple(self.getDistances() if calcDists else distances)
         if calcDists:
             self.dump()
+        if secstr is None:
+            self.getSecStr()
+        else:
+            self.secstr = secstr
         #debug('Initialized gene '+name)
+
+    def getSecStr(self):
+        name, strand = self.name.split("_")
+        name = name.upper()
+        try:
+            s = tuple([MAPPING[a] for a in self.ss["%s:%s:sequence" % (name, strand)]])
+            if s != self.sequence:
+                debug("WARNING: Different sequences for %s" % (self.name,))
+                debug(str(s))
+                debug(str(self.sequence))
+            self.secstr = self.ss["%s:%s:secstr" % (name, strand)]
+        except KeyError:
+            debug("WARNING: missing secondary structure info %s" % (self.name,))
+            self.secstr = None
+        self.dump()
+
 
     @staticmethod
     def canonicalName(name, withStrand = True):
@@ -227,6 +260,12 @@ class Gene:
             results.append(("res", (resName,)))
             if aminoAcid not in IGNORE:
                 results.append(("residue", (resName, aminoAcid)))
+            if self.secstr:
+                name = MAPPING_SS[self.secstr[i]]
+                if name is not None:
+                    results.append(("secstr", (resName, name)))
+
+
             #if i > 0:
             #    results.append(("next", (self.resName(i-1), resName)))
 
@@ -234,8 +273,7 @@ class Gene:
         for i, j, dist in self.distances:
             #results.append(("dist", (self.resName(i), self.sequence[i], self.resName(j), self.sequence[j], dist)))
             results.append(("dist", (self.resName(i), self.resName(j), dist)))
-
-        #results.sort()
+                #results.sort()
         return ["%s(%s)" % (head, ", ".join(map(str, args))) for head, args in results] + self.backgroundKnowledge
 
     @staticmethod
@@ -243,7 +281,7 @@ class Gene:
         return PICKLEDIR / (name+".pickle")
 
     def dump(self):
-        data = (self.name, self.sequence, self.structure, self.distances)
+        data = (self.name, self.sequence, self.structure, self.distances, self.secstr)
         with self.serializedFileName(self.name).open('wb') as f:
             pickle.dump(data, f)
 
