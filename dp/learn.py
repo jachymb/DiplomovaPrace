@@ -282,7 +282,7 @@ def learningTest(cvdir):
             #plotLDA(X_train, X_test, y_train, y_test, foldDir)
 
             for name, Clf in clasfifiers:
-                debug("Fitting clasifier %s for fold %d of %d in node %s." % (name, i, NUM_FOLDS, cvdir.name))
+                debug("Fitting clasifier %s for fold %d of %d in node %s." % (name, i+1, NUM_FOLDS, cvdir.name))
                 if cvdir.name != 'molecular_function':
                     clf = Clf()
                 else:

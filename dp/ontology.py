@@ -210,7 +210,6 @@ class Ontology:
         self.generateExamplesUnified()
         bestClassifiers = []
         terms = self.termsByDepth() # This sorting is needed later in bnet learning
-        terms.remove(self.root)
         treeliker = TreeLikerWrapper(self, treelikerPath, template)
         def processTerm(term):
             return term, treeliker.runTermTest(term)
