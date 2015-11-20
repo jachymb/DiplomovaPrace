@@ -7,7 +7,7 @@ import multiprocessing
 from datetime import datetime
 from pathlib import Path
 
-NUM_FOLDS = 4
+NUM_FOLDS = 8
 TEST_SIZE = 0.4
 RESULTS = Path('results') # I don't like this to in configuration so it's here
 
