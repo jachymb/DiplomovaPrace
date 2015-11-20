@@ -40,9 +40,19 @@ def parallel_map_dill(workers, function, iterable):
     pool = multiprocessing.Pool(processes=workers)
     return pool.imap(*pack_function_for_map(function, iterable))
 
-def flipdict(d):
-    new = defaultdict(dict)
-    for k, v in d.items():
-        for s, r in v.items():
-            new[s][k] = r
-    return new
+def parseFasta(path):
+    buf=None
+    if isinstance(path, str):
+        path = Path(path)
+    with path.open() as f:
+        for line in f:
+            line = line.rstrip('\n')
+            if line.startswith('>'):
+                if buf is not None:
+                    yield name, buf
+                name=line[1:]
+                buf=""
+            else:
+                buf += line
+
+
