@@ -106,12 +106,12 @@ class Gene:
         self.sequence = sequence
         calcDists = (distances is None or self.recalculateDists)
         self.distances = tuple(self.getDistances() if calcDists else distances)
-        if calcDists:
-            self.dump()
         if secstr is None:
             self.getSecStr()
         else:
             self.secstr = secstr
+        if calcDists:
+            self.dump()
         #debug('Initialized gene '+name)
 
     def getSecStr(self):
@@ -128,7 +128,6 @@ class Gene:
             debug("WARNING: missing secondary structure info %s" % (self.name,))
             self.secstr = None
         self.dump()
-
 
     @staticmethod
     def canonicalName(name, withStrand = True):
