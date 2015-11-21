@@ -49,7 +49,7 @@ MAPPING_SS = {
         'G': 'helix_3_10',
         'S': 'bend',
         'H': 'alpha_helix',
-        'E': 'beta_stand',
+        'E': 'beta_strand',
         'B': 'beta_bridge',
         'I': 'pi_helix',
         ' ': None}
