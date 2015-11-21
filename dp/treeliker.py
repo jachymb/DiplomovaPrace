@@ -12,13 +12,14 @@ __all__ = ["TreeLikerWrapper"]
 
 class TreeLikerWrapper:
     maxMemory = None
-    rerun = False
+    rerun = True
     def __init__(self, ontology, treeliker, template):
         self.ontology = ontology
         self.treeliker = str(Path(treeliker).resolve())
         self.template = template
 
     def _runTreeLiker(self, resultPath, batchPath):
+        return
         if not self.rerun and (resultPath / '0' / 'test.arff').is_file():
             return
         cmd = ["java", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name]
