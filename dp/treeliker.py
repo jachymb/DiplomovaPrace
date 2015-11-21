@@ -57,11 +57,12 @@ class TreeLikerWrapper:
         datasetPath = resultPath / 'dataset.txt'
 
         batchFile = "set(algorithm, relf_grounding_counting)\n" \
-                    "set(verbosity, 0)\n" \
+                    "set(verbosity, %d)\n" \
                     "set(output_type, train_test)\n" \
                     "set(examples, '%s')\n" \
                     "set(template, [%s])\n" \
                     "set(covered_class, '%s')\n\n" % (
+                        dp.utils.verbosity,
                         datasetPath.name,
                         self.template,
                         term)
