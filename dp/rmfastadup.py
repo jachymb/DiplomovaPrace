@@ -19,6 +19,7 @@ associated = set()
 for k,v in asoc.associations.items():
     associated.update({g.upper() for g in v})
 
+ss = dict(parseFasta("data/ss.txt"))
 #print(associated)
 
 for l in fastafile:
@@ -28,8 +29,10 @@ for l in fastafile:
     if typ != 'mol:protein' \
         or len(seq) < MIN_SEQ_LEN \
         or Counter(seq)['X']/len(seq) > MAX_SEQ_UNK \
-        or name not in associated:
+        or name not in associated \
+        or ("%s:secstr" % name.replace("_",":")) not in ss:
         continue
+
     if seq not in seqs and name not in names:
         sys.stdout.write(l)
         sys.stdout.write(seq)
