@@ -4,6 +4,7 @@ import sys
 from dp.associations import GeneAssociations
 from dp.ontology import Ontology
 from collections import Counter
+from dp.utils import parseFasta
 seqs = set()
 names = set()
 fastafile = open(sys.argv[1])
