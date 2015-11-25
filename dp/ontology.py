@@ -80,7 +80,7 @@ class Ontology:
         #if term == self.root: return 0
         parents = self.ontology[term]['parents']
         if len(parents) == 0: return 0
-        return 1 + min(map(self._termDepth, parents))
+        return 1 + max(map(self._termDepth, parents))
 
     def deleteSmallTerms(self, lb):
         """ Delete terms which don't have enough associations.
