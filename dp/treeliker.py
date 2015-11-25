@@ -13,13 +13,14 @@ __all__ = ["TreeLikerWrapper"]
 class TreeLikerWrapper:
     maxMemory = None
     rerun = True
-    def __init__(self, ontology, treeliker, template):
+    def __init__(self, ontology, treeliker, template, sample_size, samples):
         self.ontology = ontology
         self.treeliker = str(Path(treeliker).resolve())
         self.template = template
+        self.samples = int(samples)
+        self.sample_size = int(sample_size)
 
     def _runTreeLiker(self, resultPath, batchPath):
-        return
         if not self.rerun and (resultPath / '0' / 'test.arff').is_file():
             return
         cmd = ["java", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name]
@@ -61,10 +62,15 @@ class TreeLikerWrapper:
                     "set(output_type, train_test)\n" \
                     "set(examples, '%s')\n" \
                     "set(template, [%s])\n" \
+                    "set(use_sampling, true)\n" \
+                    "set(num_samples, %d)\n" \
+                    "set(sample_size, %d)\n" \
                     "set(covered_class, '%s')\n\n" % (
                         dp.utils.verbosity,
                         datasetPath.name,
                         self.template,
+                        self.samples,
+                        self.sample_size,
                         term)
 
         with datasetPath.open() as ds:

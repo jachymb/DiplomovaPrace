@@ -13,10 +13,11 @@ RESULTS = Path('results') # I don't like this to in configuration so it's here
 
 def getTermPath(term):
     # Expects term name, not GO id
-    path = RESULTS / term.replace(' ','_')
+    path = RESULTS / term.replace(' ','_').replace('/', '-')
     if not path.is_dir():
         path.mkdir()
     return path
+
 
 verbosity = 2
 def debug(s, end=True):

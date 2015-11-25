@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_option("-i", "--recalculate-distances", dest="recalcDists", help="Reacalculate distances (if max distance or discreatisation were changed. Coordinates are used the same.)", action="store_true")
     parser.add_option("-l", "--min-associations", dest="lb", type="int", help="Minimum number of posive examples. (If there are not enough, term is ignored)", default=1)
     #parser.add_option("-m", "--max-positive", dest="max_positive", type="int", help="Maximum positive samples.")
-    #parser.add_option("-n", "--max-negative", dest="max_negative", type="int", help="Maximum negative samples.")
+    parser.add_option("-n", "--sampling", dest="sampling", type="string", help="Treeliker subsampling settings. SAMPLESIZExNSAMPLES default = MAXx1")
     parser.add_option("-m", "--max", dest="max", type="int", default=2048, help="Maximum dataset size.")
     parser.add_option("-p", "--template", dest="template", help="The template for TreeLiker. Use with -f.")
     #parser.add_option("-r", "--reserve", dest="reserve", type="float", help="Ratio of genes (or absolute number if >= 1) to reserve for Bayessian learning.", default = 1024)
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser.add_option("-v", "--verbosity", dest="verbosity", type="int", default=2, help="0 = Silent, 1 = Hide dynamic elements, 2  = Show everything")
 
     parser.add_option("-x", "--treeliker", dest="treeliker", help="TreeLiker jar binary.")
+
 
     options, args = parser.parse_args()
 
@@ -91,4 +92,10 @@ if __name__ == "__main__":
     TreeLikerWrapper.maxMemory = options.memory
     Gene.recalculateDists = bool(options.recalcDists)
 
-    ontology.completeTest(options.treeliker, options.template, options.processes)
+    if options.sampling:
+        sample_size, samples = options.sampling.split("x")
+    else:
+        sample_size, samples = options.max, 1
+
+    treelikerArgs = (options.treeliker, options.template, sample_size, samples) 
+    ontology.completeTest(treelikerArgs, options.processes)

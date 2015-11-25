@@ -206,11 +206,11 @@ class Ontology:
                 return k
         raise KeyError('Name %s is not in the ontology!' % name)
 
-    def completeTest(self, treelikerPath, template, processes = 1):
+    def completeTest(self, treelikerArgs, processes = 1):
         self.generateExamplesUnified()
         bestClassifiers = []
         terms = self.termsByDepth() # This sorting is needed later in bnet learning
-        treeliker = TreeLikerWrapper(self, treelikerPath, template)
+        treeliker = TreeLikerWrapper(self, *treelikerArgs)
         def processTerm(term):
             return term, treeliker.runTermTest(term)
         

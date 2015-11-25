@@ -20,7 +20,6 @@ def _or(p_false, p_true):
     """
     return np.take([p_false, p_true], [[FALSE, TRUE], [TRUE, TRUE]], axis=0)
 
-
 class BayesNet:
     def __init__(self, fold, clfName, ontology):
         self.ontology = ontology
@@ -31,11 +30,6 @@ class BayesNet:
         self.allobserved = {}
         self.allhidden = {}
         self.extranodes = set()
-
-    @staticmethod
-    def chname(name):
-        return name
-        #return name.replace(" ","_").replace(":","")
 
     def generateCPD(self, term, clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation):
         
@@ -98,10 +92,12 @@ class BayesNet:
             pos_decisions = clf.decision_function(X_test[y_test==POSTIVE_LABEL])
             neg_decisions = clf.decision_function(X_test[y_test==NEGATIVE_LABEL])
             means = [numpy.mean(pos_decisions)], [numpy.mean(neg_decisions)]
-            precs = [[1/numpy.var(pos_decisions)]], [[1/numpy.var(neg_decisions)]]
+            maxprec = 100.0
+            precs = [[numpy.min((1/numpy.var(pos_decisions), maxprec))]], [[numpy.min((1/numpy.var(neg_decisions), maxprec))]]
         else:
             means = [-1.], [1.]
             precs = [[1.]], [[1.]]
+        print("Gaussian params:", term, self.ontology[term]['name'], means, precs)
         observed = Mixture(hidden, Gaussian, means, precs)
         #observed = ConditionalProbabilityTable([
         #        ['0', '0', conf[0][0] / posTest], # if term != root else 1.],
@@ -141,13 +137,13 @@ class BayesNet:
         #    print(term, ":", repr(self.clfName), repr(clf.name), self.fold, clf.fold)
 
         observations = {
-                self.chname(term) : clf.decision_function(X) if term != self.ontology.root else numpy.array([-1.]*len(X))
+                term : clf.decision_function(X) if term != self.ontology.root else numpy.array([-1.]*len(X))
                 for term, (clf, X, y, g)
                 in classifiers.items()}
         #print("observations:")
         #print(observations)
         gt = {
-                self.chname(term) : y
+                term : y
                 for term, (clf, X, y, g)
                 in classifiers.items()}
         #print("gt:")
