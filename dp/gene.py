@@ -70,7 +70,8 @@ class GeneFactory:
         xmlFileName = Gene.xmlname(name)
         while name in self.openGenes:
             time.sleep(0.1)
-        if self.deserialize and serializedFileName.is_file() and serializedFileName.stat().st_mtime > xmlFileName.stat().st_mtime:
+        #if self.deserialize and serializedFileName.is_file() and serializedFileName.stat().st_mtime > xmlFileName.stat().st_mtime:
+        if self.deserialize and serializedFileName.is_file():
             #debug("Deserializing data for gene " + fullName)
             with serializedFileName.open('rb') as f:
                 try:

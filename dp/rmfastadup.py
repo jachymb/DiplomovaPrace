@@ -12,7 +12,8 @@ fastafile = open(sys.argv[1])
 MIN_SEQ_LEN = 32
 MAX_SEQ_UNK = 0.1
 
-asoc = GeneAssociations.fromFile(sys.argv[2])
+TAXONS_HOMMO_SAPIENS = {9606}
+asoc = GeneAssociations.fromFile(sys.argv[2], taxons = TAXONS_HOMMO_SAPIENS)
 ontology = Ontology(sys.argv[3])
 ontology.setAssociations(asoc)
 asoc.transitiveClosure()
@@ -27,16 +28,18 @@ for l in fastafile:
     name, typ, *_ = l[1:].split(" ")
     name = name.upper()
     seq = next(fastafile)
+    sskey = "%s:secstr" % name.replace("_",":")
     if typ != 'mol:protein' \
         or len(seq) < MIN_SEQ_LEN \
         or Counter(seq)['X']/len(seq) > MAX_SEQ_UNK \
         or name not in associated \
-        or ("%s:secstr" % name.replace("_",":")) not in ss:
+        or sskey not in ss \
+        or seq in seqs \
+        or name in names:
         continue
 
-    if seq not in seqs and name not in names:
-        sys.stdout.write(l)
-        sys.stdout.write(seq)
-        seqs.add(seq)
-        names.add(name) # This is HACK because blastp is case insensitive
+    sys.stdout.write(l)
+    sys.stdout.write(seq)
+    seqs.add(seq)
+    names.add(name) # This is HACK because blastp is case insensitive
 

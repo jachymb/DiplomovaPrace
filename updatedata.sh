@@ -35,9 +35,9 @@ wget -O ss.txt http://www.rcsb.org/pdb/files/ss.txt
 #wget http://www.rcsb.org/pdb/files/ss_dis.txt
 
 cd obo
-wget -N http://www.geneontology.org/ontology/subsets/goslim_{generic,plant,candida,pir,pombe,yeast,aspergillus,metagenomics,virus,chembl}.obo
+#wget -N http://www.geneontology.org/ontology/subsets/goslim_{generic,plant,candida,pir,pombe,yeast,aspergillus,metagenomics,virus,chembl}.obo
 
 wget -N http://purl.obolibrary.org/obo/go/go-basic.obo
-wget -N http://purl.obolibrary.org/obo/go.obo
+#wget -N http://purl.obolibrary.org/obo/go.obo
 
 

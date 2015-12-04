@@ -113,10 +113,10 @@ if __name__ == "__main__":
     if len(sys.argv) not in (5,6):
         sys.stderr.write("Usage: %s FASTAFILE BLAST-DISTANCES THRESHOLD OUTPUT [ITERS]\n")
         sys.exit(1)
-    if len(sys.argv) == 5: sys.argv.append(20)
+    if len(sys.argv) == 5: sys.argv.append(50)
     ALL, DISTS, THRESHOLD, DATASET, ITERS = sys.argv[1:] 
 
     graph = Graph(float(THRESHOLD), DATASET, DISTS, ALL)
     #graph = Graph.load()
-    graph.randomMaximalIndependentSets(ITERS)
+    graph.randomMaximalIndependentSets(int(ITERS))
 
