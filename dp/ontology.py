@@ -4,7 +4,7 @@ from dp.bayesnet import BayesNet
 from dp.gene import GeneFactory
 from dp.learn import plotRoc
 from dp.treeliker import TreeLikerWrapper
-from dp.utils import debug, parallel_map_dill, getTermPath, RESULTS
+from dp.utils import debug, parallel_map_dill, getTermPath, RESULTS, NUM_FOLDS
 from itertools import groupby, product
 from pathlib import Path
 import dp.utils
@@ -180,6 +180,7 @@ class Ontology:
         return sorted(terms, key = lambda x: (m*self._termDepth(x), x))
 
     def generateExamplesUnified(self):
+        #return
         debug("Generating unified datasets.")
         terms = self.termsByDepth(False)
         #rootname = self.ontology[self.root]['name']
@@ -216,17 +217,18 @@ class Ontology:
         
         nets = defaultdict(dict)
         allresults = tuple(parallel_map_dill(processes, processTerm, terms))
+        combis = {}
         for term, learned in allresults:
-            for clfName, folds in learned.items():
-                for clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation in folds:
-                    i = clf.fold
-                    if clfName in nets[i]:
-                        net = nets[i][clfName]
-                    else:
-                        net = BayesNet(i, clfName, self)
-                        nets[i][clfName] = net
+            combis.add((term,clfName))
+            for clfName, i, clf in learned:
+                #for clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation in folds:
+                if clfName in nets[i]:
+                    net = nets[i][clfName]
+                else:
+                    net = BayesNet(i, clfName, self)
+                    nets[i][clfName] = net
 
-                    net.generateCPD(term, clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation) 
+                net.generateCPD(term, clf)#, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation) 
 
         for i, byClf in sorted(nets.items()):
             for clfName, net in byClf.items():
@@ -234,16 +236,19 @@ class Ontology:
                 net.predict()
 
         debug("Generating plots.")
-        for term, learned in allresults:
-            for clfName, folds in learned.items():
-                cvdir = folds[0][0].cvdir
-                folds2 = [(nets[i][clfName].nodeAsClf(term),)+f[1:] for i,f in enumerate(folds)]
-                plt.clf()
-                plt.subplot(211)
-                plotRoc(clfName, folds)
-                plt.subplot(212)
-                plotRoc("Bayes correction", folds2)
-                plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.png')))
-                plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.ps')))
+        #for term, learned in allresults:
+        #    for clfName, folds in learned.items():
+        for term,clfName in combis:
+            cvdir = folds[0][0].cvdir
+            #folds2 = [(nets[i][clfName].nodeAsClf(term),)+f[1:] for i,f in enumerate(folds)]
+            plt.clf()
+            plt.subplot(211)
+            plotRoc(term, clfName, term)
+            plt.subplot(212)
+            plotRoc(term, clfName, "Bayes correction",
+                    clfs = (nets[i][clfName].nodeAsClf(term) for i in range(NUM_FOLDS) ))
+            #plotRoc("Bayes correction", folds2)
+            plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.png')))
+            plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.ps')))
         debug("Finished complete test.")
 

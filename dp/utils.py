@@ -1,11 +1,12 @@
-import sys
 from collections import defaultdict
-import os
 from contextlib import contextmanager
-import dill
-import multiprocessing
 from datetime import datetime
 from pathlib import Path
+import dill
+import multiprocessing
+import os
+import pickle
+import sys
 
 NUM_FOLDS = 8
 TEST_SIZE = 0.4
@@ -18,6 +19,9 @@ def getTermPath(term):
         path.mkdir()
     return path
 
+def loadClf(term, fold, clfName):
+    with (getTermPath(term) / str(fold) / (clfName + '.pickle')).open('rb') as ser:
+        return pickle.load(ser)
 
 verbosity = 2
 def debug(s, end=True):

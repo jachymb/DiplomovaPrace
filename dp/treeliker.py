@@ -12,7 +12,7 @@ __all__ = ["TreeLikerWrapper"]
 
 class TreeLikerWrapper:
     maxMemory = None
-    rerun = True
+    rerun = False
     def __init__(self, ontology, treeliker, template, sample_size, samples):
         self.ontology = ontology
         self.treeliker = str(Path(treeliker).resolve())

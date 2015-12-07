@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from collections import Counter, defaultdict
-from dp.utils import NUM_FOLDS, debug
+from dp.utils import NUM_FOLDS, debug, loadClf
 from pathlib import Path
 from scipy import interp
 from itertools import product
@@ -78,18 +78,22 @@ def getGenes(cvdir):
                 fold += 1
                 
 legendprop = {'size': 10}
-def plotRoc(clfName, folds):
+def plotRoc(term, clfName, title, clfs = None):
+
     mean_tpr = 0.0
     mean_fpr = numpy.linspace(0, 1, 100)
     all_tpr = []
     #plt.clf()
-    for i, (clf, X_train, y_train, X_test, y_test, X_validation, y_validation,_,_,_) in enumerate(folds):
+    if clfs is None:
+        clfs = (loadClf(term, fold, clfName) for fold in range(NUM_FOLDS))
+    for clf in clfs:
+    #for i, (clf, X_train, y_train, X_test, y_test, X_validation, y_validation,_,_,_) in enumerate(folds):
 
-        probabs = clf.predict_proba(X_test)
+        probabs = clf.predict_proba(clf.X_test)
         try:
-            fpr, tpr, _ = roc_curve(y_test, probabs[:, 1])
+            fpr, tpr, _ = roc_curve(clf.y_test, probabs[:, 1])
         except IndexError:
-            fpr, tpr, _ = roc_curve(y_test, probabs[:, 0], pos_label=POSTIVE_LABEL)
+            fpr, tpr, _ = roc_curve(clf.y_test, probabs[:, 0], pos_label=POSTIVE_LABEL)
         mean_tpr += interp(mean_fpr, fpr, tpr)
         mean_tpr[0] = 0.0
         fpr = numpy.nan_to_num(fpr)
@@ -112,7 +116,7 @@ def plotRoc(clfName, folds):
     plt.ylim([-0.05, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver operating characteristic: '+clfName)
+    plt.title('Receiver operating characteristic: '+title)
     plt.legend(loc="lower right", prop=legendprop)
     #plt.savefig(str(outdir/(clfName.replace(" ","_")+'_roc.png')))
 
@@ -153,6 +157,7 @@ def plotPrc(clfName, folds, outdir):
     plt.savefig(str(outdir/(clfName.replace(" ","_")+'_precision-recall.png')))
 
 def plotPCA(X_train, y_train, X_test, y_test, outdir):
+    #clf = loadClf(term, fold, clfName)
     #try:
     #    decision = clf.decision_function
     #    Vf = numpy.arange(-1.,1.1,0.1)
@@ -198,18 +203,18 @@ def plotPCA(X_train, y_train, X_test, y_test, outdir):
         plt.legend()
         plt.title('PCA for %s on %s data' % (term, n))
         plt.savefig(str(outdir/('pca-%s.png' % (n,))))
-        plt.savefig(str(outdir/('pca-%s.ps' % (n,))))
+        plt.savefizg(str(outdir/('pca-%s.ps' % (n,))))
 
-def plotLDA(X_train, X_test, y_train, y_test, outdir):
-    target_names = ["pos","neg"]
-    lda = LDA(n_components=2)
-    X_r2 = lda.fit(X_train, y_train).transform(X_test)
-    plt.clf()
-    for c, i, target_name in zip("rg", [0, 1], target_names):
-        plt.scatter(X_r2[y_test == i, 0], X_r2[y_test == i, 0], c=c, label=target_name)
-    plt.legend()
-    plt.title('LDA')
-    plt.savefig(str(outdir/'lda.png'))
+#def plotLDA(X_train, X_test, y_train, y_test, outdir):
+    #target_names = ["pos","neg"]
+    #lda = LDA(n_components=2)
+    #X_r2 = lda.fit(X_train, y_train).transform(X_test)
+    #plt.clf()
+    #for c, i, target_name in zip("rg", [0, 1], target_names):
+    #    plt.scatter(X_r2[y_test == i, 0], X_r2[y_test == i, 0], c=c, label=target_name)
+    #plt.legend()
+    #plt.title('LDA')
+    #plt.savefig(str(outdir/'lda.png'))
 
 def learningTest(cvdir):
     debug("Starting learning in node %s." % cvdir.name) 
@@ -324,8 +329,24 @@ def learningTest(cvdir):
                 clf.fold = i
                 clf.name = name
                 clf.cvdir = cvdir
+                clf.X_train = X_train
+                clf.X_test = X_test
+                clf.X_validation = X_validation
+                clf.y_train = y_train
+                clf.y_test = y_test
+                clf.y_validation = y_validation
+                clf.g_train = g_train
+                clf.g_test = g_test
+                clf.g_validation = g_validation
 
-                alldata[name].append((clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation))
+                #alldata[name].append((clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation))
+
+                with (foldDir / (name + ".pickle")).open('wb') as ser:
+                    pickle.dump(clf, ser)
+                
+                debug("Finished fitting clasifier %s for fold %d of %d in node %s." % (name, i+1, NUM_FOLDS, cvdir.name))
+                yield name, i, clf
+
        
         #for clfName, folds in alldata.items():
         #    plotRoc(clfName, folds, cvdir)
