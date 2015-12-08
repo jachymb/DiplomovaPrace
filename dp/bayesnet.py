@@ -32,8 +32,9 @@ class BayesNet:
         self.allhidden = {}
         self.extranodes = set()
 
-    def generateCPD(self, term, clf): #, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation):
+    def generateCPD(self, term): #, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation):
         
+        clf = loadClf(self.ontology[term]['name'], self.fold, self.clfName)
         posTrain = sum(clf.y_train == POSTIVE_LABEL)
         negTrain = sum(clf.y_train == NEGATIVE_LABEL)
         totalTrain = posTrain + negTrain
@@ -89,13 +90,15 @@ class BayesNet:
         #print("Confusion matrix:")
         #print(conf)
        
-        if term != self.ontology.root:
+        try:
+            assert term != self.ontology.root
             pos_decisions = clf.decision_function(clf.X_test[clf.y_test==POSTIVE_LABEL])
             neg_decisions = clf.decision_function(clf.X_test[clf.y_test==NEGATIVE_LABEL])
             means = [numpy.mean(pos_decisions)], [numpy.mean(neg_decisions)]
             maxprec = 100.0
             precs = [[numpy.min((1/numpy.var(pos_decisions), maxprec))]], [[numpy.min((1/numpy.var(neg_decisions), maxprec))]]
-        else:
+        #else:
+        except (ValueError, AssertionError):
             means = [-1.], [1.]
             precs = [[1.]], [[1.]]
         print("Gaussian params:", term, self.ontology[term]['name'], means, precs)
@@ -130,7 +133,7 @@ class BayesNet:
         self.predictions = {term : numpy.empty((self.lenValidation, 2), dtype=float) for term in self.ontology.ontology}
 
         classifiers = {
-                term : lambda: loadClf(term, self.fold, self.clfName) #self.ontology[term]['clf'][self.fold][self.clfName]
+                term : lambda: loadClf(self.ontology[term]['name'], self.fold, self.clfName) #self.ontology[term]['clf'][self.fold][self.clfName]
                 for term
                 in self.ontology.ontology
                 }
@@ -138,9 +141,11 @@ class BayesNet:
         #    print(term, ":", repr(self.clfName), repr(clf.name), self.fold, clf.fold)
 
         observations = {
-                term : clf().decision_function(clf.X_validation) if term != self.ontology.root else numpy.array([-1.]*len(X))
-                for term, clf #(clf, X, y, g)
-                in classifiers.items()}
+                term : clf.decision_function(clf.X_validation) if term != self.ontology.root else numpy.array([-1.]*len(clf.X_validation))
+                for term, clff #(clf, X, y, g)
+                in classifiers.items()
+                for clf in (clff(),)
+                }
         #print("observations:")
         #print(observations)
         gt = {
@@ -186,7 +191,8 @@ class BayesNet:
                 print(compare)
 
     def nodeAsClf(self, term):
-        clf = loadClf(term, self.fold, self.clfName)
-        clf.predict_proba = lambda *a: self.predictions[term] #HACK
+        clf = loadClf(self.ontology[term]['name'], self.fold, self.clfName)
+        #clf.predict_proba = lambda *a: self.predictions[term] #HACK
+        clf.__dict__['predict_proba'] = lambda *a: self.predictions[term] #HACK
         return clf
                 

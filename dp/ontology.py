@@ -4,7 +4,8 @@ from dp.bayesnet import BayesNet
 from dp.gene import GeneFactory
 from dp.learn import plotRoc
 from dp.treeliker import TreeLikerWrapper
-from dp.utils import debug, parallel_map_dill, getTermPath, RESULTS, NUM_FOLDS
+from dp.utils import debug, parallel_map_dill, getTermPath, RESULTS, NUM_FOLDS, loadClf
+from matplotlib.font_manager import FontProperties
 from itertools import groupby, product
 from pathlib import Path
 import dp.utils
@@ -217,10 +218,10 @@ class Ontology:
         
         nets = defaultdict(dict)
         allresults = tuple(parallel_map_dill(processes, processTerm, terms))
-        combis = {}
+        combis = set()
         for term, learned in allresults:
-            combis.add((term,clfName))
-            for clfName, i, clf in learned:
+            for clfName, i in learned:
+                combis.add((term,clfName))
                 #for clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation in folds:
                 if clfName in nets[i]:
                     net = nets[i][clfName]
@@ -228,7 +229,7 @@ class Ontology:
                     net = BayesNet(i, clfName, self)
                     nets[i][clfName] = net
 
-                net.generateCPD(term, clf)#, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation) 
+                net.generateCPD(term)#, clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation) 
 
         for i, byClf in sorted(nets.items()):
             for clfName, net in byClf.items():
@@ -238,16 +239,23 @@ class Ontology:
         debug("Generating plots.")
         #for term, learned in allresults:
         #    for clfName, folds in learned.items():
+        plt.figure(figsize = (6,12))
         for term,clfName in combis:
-            cvdir = folds[0][0].cvdir
+            termN = self[term]['name']
+            cvdir = getTermPath(termN)
             #folds2 = [(nets[i][clfName].nodeAsClf(term),)+f[1:] for i,f in enumerate(folds)]
-            plt.clf()
-            plt.subplot(211)
-            plotRoc(term, clfName, term)
-            plt.subplot(212)
-            plotRoc(term, clfName, "Bayes correction",
+            
+            s1 = plt.subplot(211, adjustable='box', aspect=1)
+            s1.axis('equal')
+            #s1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            plotRoc(termN, clfName, termN)
+            s2 = plt.subplot(212, adjustable='box', aspect=1)
+            s2.axis('equal')
+            #s2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            plotRoc(termN, clfName, "Bayes correction",
                     clfs = (nets[i][clfName].nodeAsClf(term) for i in range(NUM_FOLDS) ))
             #plotRoc("Bayes correction", folds2)
+            print(str(cvdir/(clfName.replace(" ","_")+'_roc.png')))
             plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.png')))
             plt.savefig(str(cvdir/(clfName.replace(" ","_")+'_roc.ps')))
         debug("Finished complete test.")

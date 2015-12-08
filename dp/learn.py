@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from collections import Counter, defaultdict
-from dp.utils import NUM_FOLDS, debug, loadClf
+from dp.utils import NUM_FOLDS, debug, loadClf, rerun
 from pathlib import Path
 from scipy import interp
 from itertools import product
@@ -20,7 +20,7 @@ from sklearn.svm import SVC
 import csv
 import matplotlib.pyplot as plt
 import numpy
-import pickle
+import dill
 import re
 import sys
 
@@ -86,7 +86,8 @@ def plotRoc(term, clfName, title, clfs = None):
     #plt.clf()
     if clfs is None:
         clfs = (loadClf(term, fold, clfName) for fold in range(NUM_FOLDS))
-    for clf in clfs:
+    for i,clf in enumerate(clfs):
+        print("roc", clf)
     #for i, (clf, X_train, y_train, X_test, y_test, X_validation, y_validation,_,_,_) in enumerate(folds):
 
         probabs = clf.predict_proba(clf.X_test)
@@ -203,7 +204,7 @@ def plotPCA(X_train, y_train, X_test, y_test, outdir):
         plt.legend()
         plt.title('PCA for %s on %s data' % (term, n))
         plt.savefig(str(outdir/('pca-%s.png' % (n,))))
-        plt.savefizg(str(outdir/('pca-%s.ps' % (n,))))
+        plt.savefig(str(outdir/('pca-%s.ps' % (n,))))
 
 #def plotLDA(X_train, X_test, y_train, y_test, outdir):
     #target_names = ["pos","neg"]
@@ -253,7 +254,8 @@ def learningTest(cvdir):
                      in sorted(counts.items()))),
             file = output)
 
-        alldata = defaultdict(list)
+        #alldata = defaultdict(list)
+        alldata = []
         for i, (g_train, g_test) in zip(range(NUM_FOLDS), getGenes(cvdir)) :
             foldDir = cvdir / str(i)
             train = foldDir / 'train.arff'
@@ -287,11 +289,17 @@ def learningTest(cvdir):
             #plotLDA(X_train, X_test, y_train, y_test, foldDir)
 
             for name, Clf in clasfifiers:
+                alldata.append(( name, i))
+                serFile = foldDir / (name + ".pickle")
+                if serFile.is_file() and not rerun:
+                    continue
+
                 debug("Fitting clasifier %s for fold %d of %d in node %s." % (name, i+1, NUM_FOLDS, cvdir.name))
                 if cvdir.name != 'molecular_function':
                     clf = Clf()
                 else:
                     clf = DummyClassifier(strategy='constant', constant=POSTIVE_LABEL)
+                    clf.decision_function = lambda a: [1.0]*len(a)
 
                 print('Testing the classifier %s:' % name, file=output)
        
@@ -341,11 +349,10 @@ def learningTest(cvdir):
 
                 #alldata[name].append((clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation))
 
-                with (foldDir / (name + ".pickle")).open('wb') as ser:
-                    pickle.dump(clf, ser)
+                with serFile.open('wb') as ser:
+                    dill.dump(clf, ser)
                 
                 debug("Finished fitting clasifier %s for fold %d of %d in node %s." % (name, i+1, NUM_FOLDS, cvdir.name))
-                yield name, i, clf
 
        
         #for clfName, folds in alldata.items():

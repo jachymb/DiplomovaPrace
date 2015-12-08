@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from sklearn import cross_validation
 from dp.learn import learningTest
-from dp.utils import debug, RESULTS, getTermPath, NUM_FOLDS, TEST_SIZE
+from dp.utils import debug, RESULTS, getTermPath, NUM_FOLDS, TEST_SIZE, rerun
 import dp
 import sys
 
@@ -12,7 +12,6 @@ __all__ = ["TreeLikerWrapper"]
 
 class TreeLikerWrapper:
     maxMemory = None
-    rerun = False
     def __init__(self, ontology, treeliker, template, sample_size, samples):
         self.ontology = ontology
         self.treeliker = str(Path(treeliker).resolve())
@@ -21,7 +20,7 @@ class TreeLikerWrapper:
         self.sample_size = int(sample_size)
 
     def _runTreeLiker(self, resultPath, batchPath):
-        if not self.rerun and (resultPath / '0' / 'test.arff').is_file():
+        if not rerun and (resultPath / '0' / 'test.arff').is_file():
             return
         cmd = ["java", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name]
         if self.maxMemory is not None:

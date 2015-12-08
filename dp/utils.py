@@ -5,12 +5,12 @@ from pathlib import Path
 import dill
 import multiprocessing
 import os
-import pickle
 import sys
 
 NUM_FOLDS = 8
 TEST_SIZE = 0.4
 RESULTS = Path('results') # I don't like this to in configuration so it's here
+rerun = False
 
 def getTermPath(term):
     # Expects term name, not GO id
@@ -21,7 +21,7 @@ def getTermPath(term):
 
 def loadClf(term, fold, clfName):
     with (getTermPath(term) / str(fold) / (clfName + '.pickle')).open('rb') as ser:
-        return pickle.load(ser)
+        return dill.load(ser)
 
 verbosity = 2
 def debug(s, end=True):
