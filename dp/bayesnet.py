@@ -193,6 +193,12 @@ class BayesNet:
     def nodeAsClf(self, term):
         clf = loadClf(self.ontology[term]['name'], self.fold, self.clfName)
         #clf.predict_proba = lambda *a: self.predictions[term] #HACK
-        clf.__dict__['predict_proba'] = lambda *a: self.predictions[term] #HACK
-        return clf
+        #clf.__dict__['predict_proba'] = lambda *a: self.predictions[term] #HACK
+        class FakeClassifier:
+            def predict_proba(*a): 
+                return self.predictions[term]
+        for a in ('X_test','y_test',):
+        #    if a != 'predict_proba':
+            setattr(FakeClassifier, a, getattr(clf, a))
+        return FakeClassifier()
                 

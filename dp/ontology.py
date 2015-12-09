@@ -241,6 +241,7 @@ class Ontology:
         #    for clfName, folds in learned.items():
         plt.figure(figsize = (6,12))
         for term,clfName in combis:
+            plt.clf()
             termN = self[term]['name']
             cvdir = getTermPath(termN)
             #folds2 = [(nets[i][clfName].nodeAsClf(term),)+f[1:] for i,f in enumerate(folds)]
