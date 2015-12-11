@@ -17,6 +17,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler, Normalizer, MaxAbsScaler, RobustScaler
 from sklearn.semi_supervised import LabelPropagation, LabelSpreading
 from sklearn.svm import SVC
+import bz2
 import csv
 import matplotlib.pyplot as plt
 import numpy
@@ -47,16 +48,17 @@ def readArff(filename):
             elif isopen:
                 current += c
 
-    with filename.open() as f:
+    #with filename.open() as f:
+    with bz2.open(str(filename)+'.bz2', 'r') as f:
         
         line = ''
         while line != '@data':
-            line = f.readline().strip()
+            line = f.readline().decode().strip()
             if line.startswith("@attribute 'classification'"):
                 line = line[line.find('{') + 1:line.find('}')]
                 classes = {i:n for n,i in enumerate(parseLine(line))}
 
-        for line in f.read().splitlines():
+        for line in f.read().decode().splitlines():
             record = list(parseLine(line))
             labels.append(classes[record[-1]])
             data.append([int(x) for x in record[:-1]])
@@ -64,8 +66,9 @@ def readArff(filename):
 
 # sort of hack
 def getGenes(cvdir):
-    with (cvdir /'dataset.txt').open() as f:
-        genes = [re.sub(r'.*?proteinName\((.*?)\).*',r'\1', x.strip()) for x in f]
+    path = str(cvdir /'dataset.txt.bz2')
+    with bz2.open(path, 'rb') as f:
+        genes = [re.sub(r'.*?proteinName\((.*?)\).*',r'\1', x.decode().strip()) for x in f]
     fold = 0
     def getIndexes(s):
         return {int(x) for x in re.search("([0-9]+,)+[0-9]+",s).group().split(",")}
@@ -290,7 +293,7 @@ def learningTest(cvdir):
 
             for name, Clf in clasfifiers:
                 alldata.append(( name, i))
-                serFile = foldDir / (name + ".pickle")
+                serFile = foldDir / (name + ".pickle.bz2")
                 if serFile.is_file() and not rerun:
                     continue
 
@@ -349,8 +352,8 @@ def learningTest(cvdir):
 
                 #alldata[name].append((clf, X_train, y_train, X_test, y_test, X_validation, y_validation, g_train, g_test, g_validation))
 
-                with serFile.open('wb') as ser:
-                    dill.dump(clf, ser)
+                with bz2.open(str(serFile), 'wb') as ser:
+                    ser.write(dill.dumps(clf))
                 
                 debug("Finished fitting clasifier %s for fold %d of %d in node %s." % (name, i+1, NUM_FOLDS, cvdir.name))
 
@@ -362,7 +365,7 @@ def learningTest(cvdir):
             # Musí to být tady, protože funkce výše mohou objekt ještě upravovat
         #    for i, (clf,_,_,_,_,_,_,_,_,_) in enumerate(folds):
         #        foldDir = cvdir / str(i)
-        #        with (foldDir / (name.replace(' ','_')+'.pickle')).open('wb') as ser:
+        #        with (foldDir / (name.replace(' ','')+'.pickle')).open('wb') as ser:
         #            pickle.dump(clf, ser)
     debug("Finished learning in node %s." % cvdir.name) 
     return alldata

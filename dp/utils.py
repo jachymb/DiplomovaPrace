@@ -2,6 +2,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
+import bz2
 import dill
 import multiprocessing
 import os
@@ -20,7 +21,8 @@ def getTermPath(term):
     return path
 
 def loadClf(term, fold, clfName):
-    with (getTermPath(term) / str(fold) / (clfName + '.pickle')).open('rb') as ser:
+    path = str(getTermPath(term) / str(fold) / (clfName + '.pickle.bz2'))
+    with bz2.open(path, 'rb') as ser:
         return dill.load(ser)
 
 verbosity = 2

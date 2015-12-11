@@ -20,7 +20,7 @@ class TreeLikerWrapper:
         self.sample_size = int(sample_size)
 
     def _runTreeLiker(self, resultPath, batchPath):
-        if not rerun and (resultPath / '0' / 'test.arff').is_file():
+        if not rerun and (resultPath / '0' / 'test.arff.bz2').is_file():
             return
         cmd = ["java", "-cp", self.treeliker, "ida.ilp.treeLiker.TreeLikerMain", "-batch", batchPath.name]
         if self.maxMemory is not None:
