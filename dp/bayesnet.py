@@ -43,20 +43,20 @@ class BayesNet:
         parents = sorted(self.ontology[term]['parents'])
 
 
-        labels = {l : PRIOR for l in product(*((0,1),)*(len(children)+1))}
+        labels = {l : PRIOR for l in product(*((POSTIVE_LABEL,NEGATIVE_LABEL),)*(len(children)+1))}
         if children:
             childNodes = [self.ontology[child]['node'][self.fold][self.clfName] for child in children]
             for gene,y in zip(clf.g_train, clf.y_train):
                 event = []
                 for child in children:
-                    event.append(0 if gene in self.ontology.associations[child] else 1)
-                event.append(0 if gene in self.ontology.associations[term] else 1)
+                    event.append(POSTIVE_LABEL if gene in self.ontology.associations[child] else NEGATIVE_LABEL)
+                event.append(POSTIVE_LABEL if gene in self.ontology.associations[term] else NEGATIVE_LABEL)
                 assert (gene in self.ontology.associations[term]) == (y == POSTIVE_LABEL)
                 event = tuple(event)
 
                 labels[event] += 1
             def countBoth(event):
-                return labels[event[:-1]+(0,)] + labels[event[:-1]+(1,)]
+                return labels[event[:-1]+(POSTIVE_LABEL,)] + labels[event[:-1]+(POSTIVE_LABEL,)]
             cprior = PRIOR * (2 ** len(children))
             
             types = [Mixture]*(len(children)-1) + [Categorical]
@@ -66,7 +66,14 @@ class BayesNet:
                 v=cpd
                 for b in event[:-1]:
                     v = v[b]
-                v[event[-1]] = counted/countBoth(event)
+                    
+                hid = event[-1]
+                if POSTIVE_LABEL not in event[:-1]: # Všichni potomci označeni "ne"
+                    v[hid] = counted/countBoth(event)
+                else:
+                    v[hid] = {POSTIVE_LABEL: 1.0, NEGATIVE_LABEL:0.0}[hid]
+
+
             print(cpd)
 
             hidden = Mixture(*mixparams, cpd)
