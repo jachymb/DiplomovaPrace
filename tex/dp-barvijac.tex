@@ -279,6 +279,11 @@ that ware applied to to prediction of DNA-binding protein function in \cite{szab
 A major advantage of relational learning approach is that it generates protein's local structural patterns
 (likely to determine protein's function) which can be interpreted and examined chemically.
 
+This work assumes that reader knows
+the techniques of well-know machine learning algorithms (mainly Suppor Vector Machines),
+Bayesian networks
+and the formalism of first order logic and graph theory.
+
 \section{Problem statement}
 
 This work examines the application of techniques used in \cite{szabova} towards a more ambitious goal:
@@ -383,13 +388,15 @@ Gene Ontology (GO) \cite{go} is a representation of relationships among various 
 biological processes, cellular components and molecular functions.
 The GO terms definitions and relationships among them are provided by human experts. 
 In this work, we're only interested in terms identifying molecular functions and the \emph{is\_a} generality relation among them.
-These terms together with the \emph{is\_a} relation form a directed acyclic graph, with a single root, which represents the
+These terms together with the \emph{is\_a} relation form a directed acyclic graph, with a single leaf (node with zero outgoing edges),
+which represents the
 most general (i.e. arbitrary) molecular function. 
 The GO terms themselves are unambiguously identified either by a numerical id (e.g. GO:0046872) or a human-readable name
-(e.g. ``metal ion binding'').
+(``metal ion binding'', in this case).
 The \emph{is\_a} relationship maps a term to more general ones. So for example GO:0046872 \emph{is\_a} GO:0043169 (``cation binding'')
  and GO:0043169  \emph{is\_a} GO:0043167 (``ion binding'').
- The \emph{is\_a} relation is implicitly transitive, thus for for example also ``metal ion binding''  \emph{is\_a} ``ion binding''.
+ The \emph{is\_a} relation is implicitly transitive,
+ thus for for example also ``metal ion binding''  \emph{is\_a} ``ion binding''.
  
 The ontology used in this thesis is the \texttt{go-basic.obo} \cite{gores} \url{http://geneontology.org/page/download-ontology} provided by the Gene Ontology Consortium. 
 It serves two purposes in this work:
@@ -397,7 +404,7 @@ It serves two purposes in this work:
 The molecular function terms are the protein functions studied in this work.
 In this context, general functions are studied alongside specific ones. 
 2) The underlying directed acyclic graph is used as the skeleton for construction of the 
-Bayesian network in the Bayesian correction step. 
+Bayesian network in the consistency correction step. 
 
 There are over 10000 terms in the ``molecular function'' namespace of Gene Ontology.
 A certain subset has to be selected because of two reasons:
@@ -765,6 +772,21 @@ appears more frequently in a protein, it's more likely to exhibit that function.
 Also note, that binary output would not provide any advantage when further piped to Support Vector Machines algorithm.
 Therefore, the grounding counting RelF variant is also applied in this work. 
 
+After the propositionalization process is finished for a given function,
+the outputs are used to train a classifier
+such as Suppor Vector Machines (SVM), Random Forest or AdaBoost.
+With regard to the next step of consistency correction,
+the nature of the classifier decision function has to be considered.
+SVM have a continuous decision function
+(oriented distance from the separating hyperplane)
+and the distribution of it's values on testing data could be 
+roughly approximated by a mixture of two normal distribution (one for positive and one for negative examples).
+The distance of their means is then a measure of class separability.
+For the later two classifier types the decision function
+would be discrete (votes of the sub-classifiers in the ensemble)
+and it's distribution on testing data could perhaps be approximated by a mixture of two binomial distributions.
+Only SVM were used in this work, though.
+
 The propositionalization process is performed for each studied function,
 where negative examples are taken from the set of proteins which are not annotated
 as having the function.
@@ -775,11 +797,117 @@ the protein may have.
 This way a protein with a certain function could end up appearing as a negative example 
 for that function, simply because that function has not yet been identified.
 This suggests that perhaps semi-supervised learning should be used instead.
-\cite{semi}
+However, there are several problems with that.
+In regard to RelF, this would require alterations in the definition of redundancy which 
+could have significant impact on the algorithm.
+Dropping the redundant features filtering would cause a decrease in performance
+of uncertain extent. 
+The author of this work is not aware of any theory, that would describe such situations.
+Further, it is not obvious how to label at least some of the negative examples -
+i.e. to to find a subset of the dataset that certainly does not have the studied function.
+Semi-supervised learning algorithms Label Propagation and Label Spreading \cite{semi}
+where briefly examined as a replacement for SVM.
+RelF ran on fully labeled dataset as described above, but semi-supervised learning
+ran with positive examples labeled only.
+The resulting classifiers were only slightly better than ``random classifier''
+and hence far inferior to SVM (details on SVM performance are discussed later).
 
+\section{Proposed consistency correction}
+As mentioned earlier, one issue with the prediction is that is does not have to be
+consistent with respect to the Gene Ontology.
+The trained SVMs may, for example, classify a certain protein
+as \emph{metal ion binding}
+but not \emph{ion binding}.
+Such result is difficult to interpret;
+without further knowledge we cannot decide
+which of these two functions the protein actually has.
 
+A naive solution could be for example
+to consider only the most specific terms
+for which the classifier outputted \emph{yes}
+and by the transitivity of the ontology also
+classify all of the more general terms as \emph{yes}.
+However, this approach ignores the information
+provided by the classification output on these
+general terms. 
 
-\section{Proposed Bayesian correction}
+A method described in \cite{bnet} is designed
+as an alternative solution which exploits this
+information to make the classification more precise.
+The idea is to construct a Bayesian network based on
+the used ontology.
+The knowledge that helps us decide the function
+in case of inconsistency
+is hidden in the parameters of the probability 
+distributions in it's nodes 
+which can be learned from relationships between
+labels on both training and testing data.
+This solution not only makes the classification 
+consistent,
+but it also improves it for most (but not all) nodes.
+
+The basic structure of the network is the same as the used ontology 
+with the \emph{is\_a} relation. 
+Nodes in this structure standing for molecular functions
+in the ontology are called \emph{hidden nodes} (marked $y_i$ in Figure \ref{fig:net}). 
+The direction of the nodes is unchanged.
+This intuitively makes sense,
+because the direction of arrow in a Bayesian 
+network should mean causation
+and a we can think of a more specific term as partial cause
+for a more general one.
+we mean nodes standing for more specific function.
+Further note, that relationships which are implied by the implicit transitivity
+of $is_a$ relation are not included -- only direct child to parent connections are.
+Further, each node has exactly one extra child node, these
+are called the \emph{observed nodes} (marked $\hat{y}_i$ in Figure \ref{fig:net}).
+The intended use of this network
+as marking all of the \emph{observed nodes}  as observed
+while assigning them value of the output 
+of the classifier of their respective function from the previous step.
+It can be a real number, the output of the classifier's decision function,
+or also a binary value.
+Then an inference algorithm is ran
+to find the most likely consistent assignment of binary (yes / no) values to $y_i$
+and these inferred values in the hidden nodes 
+are considered to be the final classification output.
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=5cm]{figures/net}
+\caption{Simple example of the structure of the network.
+Figure copied from \cite{bnet}.}
+\label{fig:net}
+\end{center}
+\end{figure}
+
+More formally, we want to find such consistent $y_1, ..., y_n$
+(where $n$ is the number of nodes in the network)
+which maximize the expression:
+\[P(y_1, ..., y_n | \hat{y}_1, ..., \hat{y}_n) \propto P(\hat{y}_1, ..., \hat{y}_n | y_1, ..., y_n) \cdot P(y_1, ..., y_n). \]
+Since the values $y_1, ..., y_n$ are independent, we can factor the conditional probability:
+\[P(\hat{y}_1, ..., \hat{y}_n | y_1, ..., y_n) = \prod_{i=1}^n P(\hat{y_i}|y_i). \]
+Note, that in where $\hat{y_i}$ is real number,
+we will assume the distribution of $P(\hat{y_i}|y_i)$ to be Gaussian.
+% TODO FIXME zdůvodnění proč je Gaussian
+%Then the joint distribution $P(\hat{y_i}, y_i)$ would be a mixture of Gaussians
+%with the mixture coefficients being the probabilities $P(y_i)$.
+Provided the network structure, using the conditional independence rule,
+the joint probability on $y_i$ can be factored as:
+\[ P(y_1, ..., y_n) = \prod_{i=1}^n P(y_i|\{y_j : j  \quad  is\_a \quad  i\}). \]
+
+Now, conditional probability tables for the distributions $P(y_i|\{y_j : j  \quad  is\_a \quad  i\})$ 
+can be simply computed from \emph{training} data by counting of occurrences.
+A prior count of 1 sample for each case is used to avoid the 
+possibility of zero probability for some cases.
+The parameters of the probabilities $P(\hat{y_i}|y_i)$ can be
+calculated by taking part of the \emph{testing} data
+(not used later for evaluation) to
+obtain $y_i$ values and estimate the parameters of $P(\hat{y_i}|y_i)$
+for example by the maximum likelihood method.
+In case of a binary classifier, 
+these parameters are contained within the confusion matrix divided 
+by the number of tested samples.
 
 \section{Methodological remarks}
 %*****************************************************************************
