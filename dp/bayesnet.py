@@ -56,7 +56,7 @@ class BayesNet:
 
                 labels[event] += 1
             def countBoth(event):
-                return labels[event[:-1]+(POSTIVE_LABEL,)] + labels[event[:-1]+(POSTIVE_LABEL,)]
+                return labels[event[:-1]+(POSTIVE_LABEL,)] + labels[event[:-1]+(NEGATIVE_LABEL,)]
             cprior = PRIOR * (2 ** len(children))
             
             types = [Mixture]*(len(children)-1) + [Categorical]
@@ -68,13 +68,18 @@ class BayesNet:
                     v = v[b]
                     
                 hid = event[-1]
+                print("Event: ", event)
                 if POSTIVE_LABEL not in event[:-1]: # Všichni potomci označeni "ne"
                     v[hid] = counted/countBoth(event)
+                    print("Stored %d / %d" % (counted,countBoth(event)))
                 else:
-                    v[hid] = {POSTIVE_LABEL: 1.0, NEGATIVE_LABEL:0.0}[hid]
+                    v[hid] = {POSTIVE_LABEL: 0.99, NEGATIVE_LABEL:0.01}[hid]
+                    print("Stored %d : %d" % (hid, v[hid]))
 
 
+            #print(term,"<-",",".join(children))
             print(cpd)
+            #print(labels)
 
             hidden = Mixture(*mixparams, cpd)
             hidden.params = cpd
