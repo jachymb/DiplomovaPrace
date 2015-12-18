@@ -172,7 +172,7 @@ class BayesNet:
             allv = (*hidden.values(), *observed.values(), *extra)
             #print([(x, [p for p in x.parents if isinstance(p, Stochastic)]) for x in [*hidden.values(), *observed.values()]])
             Q = VB(*allv)
-            Q.update(*allv, repeat=100, verbose=False)
+            Q.update(*allv, tol=1e-7, repeat=1000, verbose=True)
             #print("---")
 
             for term, node in hidden.items():
