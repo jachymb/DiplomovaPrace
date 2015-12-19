@@ -14,6 +14,8 @@
 \usepackage[utf8]{inputenc}
 \usepackage{lscape}
 \usepackage{amsmath,amssymb,latexsym}
+\usepackage{epstopdf} %converting to PDF
+
 %\usepackage{float}
 \usepackage{floatflt}
 
@@ -272,7 +274,7 @@ to start with protein function identification.
 Automated protein function prediction is then one of the classical problems in bioinformatics. 
 This problem is complicated and computationally challenging and all existing solutions
 are only approximate and based on strongly simplifying assumptions.
-It's still an active area of research various approaches are being explored. 
+It is still an active area of research various approaches are being explored. 
 In this work we focus on methods of relational machine learning (elaborated on in \cite{kuzelka}\cite{relf})
 that ware applied to to prediction of DNA-binding protein function in \cite{szabova}.
 
@@ -292,8 +294,8 @@ defined by the Gene Ontology (GO) \cite{go}\cite{gores},
 provided that there is enough training data for each particular function that we'd like to be able predict.
 
 The basic workflow is the following:
-First, a non-redundant dataset of proteins is extracted from Protein Data Bank \cite{pdb}.
-The dataset non-redundancy is achieved using technique described in \cite{maxind}.
+First, a non-redundant data set of proteins is extracted from Protein Data Bank \cite{pdb}.
+The data set non-redundancy is achieved using technique described in \cite{maxind}.
 The information about each protein in converted to a relational form, 
 which in our case is a conjunction of positive, ground, first-order logic literals.
 The algorithm RelF \cite{relf} is then used to find characteristic features
@@ -358,6 +360,16 @@ In this work, only primary, secondary and tertiary structures are considered for
 Proteins that exhibit quaternary structure are present in data, but are dealt with per-strand; 
 the quaternary structure itself is ignored.
 
+Interacting with other molecules (including the composition of a quaternary structure)
+may temporarily or even permanently change the protein's lower level structures,
+especially tertiary structure.
+A change in protein's spatial configuration may also change the set of functions
+it exhibits. 
+In other ways, changing of structure can be part of the protein's function:
+For example a protein with DNA-binding function will somewhat change it's tertiary
+structure when bound to a DNA molecule, but it doesn't mean that it lacks this
+function when unbound.
+
 \begin{landscape}
 \begin{figure}[h]
 \begin{center}
@@ -387,20 +399,21 @@ In this section, the nature and sources of the input data used later for machine
 Gene Ontology (GO) \cite{go} is a representation of relationships among various \emph{terms} identifying common (species-independent)
 biological processes, cellular components and molecular functions.
 The GO terms definitions and relationships among them are provided by human experts. 
-In this work, we're only interested in terms identifying molecular functions and the \emph{is\_a} generality relation among them.
-These terms together with the \emph{is\_a} relation form a directed acyclic graph, with a single leaf (node with zero outgoing edges),
+In this work, we're only interested in terms identifying molecular functions and the $\prec$ generality relation among them
+(denoted here by the symbol $\prec$).
+These terms together with the $\prec$ relation form a directed acyclic graph, with a single leaf (node with zero outgoing edges),
 which represents the
 most general (i.e. arbitrary) molecular function. 
 The GO terms themselves are unambiguously identified either by a numerical id (e.g. GO:0046872) or a human-readable name
 (``metal ion binding'', in this case).
-The \emph{is\_a} relationship maps a term to more general ones. So for example GO:0046872 \emph{is\_a} GO:0043169 (``cation binding'')
- and GO:0043169  \emph{is\_a} GO:0043167 (``ion binding'').
- The \emph{is\_a} relation is implicitly transitive,
- thus for for example also ``metal ion binding''  \emph{is\_a} ``ion binding''.
+The $\prec$ relationship maps a term to more general ones. So for example GO:0046872 $\prec$ GO:0043169 (``cation binding'')
+ and GO:0043169  $\prec$ GO:0043167 (``ion binding'').
+ The $\prec$ relation is implicitly transitive,
+ thus for for example also ``metal ion binding''  $\prec$ ``ion binding''.
  
 The ontology used in this thesis is the \texttt{go-basic.obo} \cite{gores} \url{http://geneontology.org/page/download-ontology} provided by the Gene Ontology Consortium. 
 It serves two purposes in this work:
-1) In the initial steps of the work, it's a simple list of protein functions.
+1) In the initial steps of the work, it is a simple list of protein functions.
 The molecular function terms are the protein functions studied in this work.
 In this context, general functions are studied alongside specific ones. 
 2) The underlying directed acyclic graph is used as the skeleton for construction of the 
@@ -412,7 +425,7 @@ A certain subset has to be selected because of two reasons:
 and therefore are useless for machine learning.
 2) The performed computations are difficult and computational resources are finite.
 Therefore only the terms which have the most proteins associated with them are used.
-Due to the transitivity of the \emph{is\_a} relation,
+Due to the transitivity of the $\prec$ relation,
 these also happen to be some of the most general terms in the ontology.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
 
@@ -424,7 +437,7 @@ but only the protein identifier and structure are used in this work.
 The following data are thus extracted from each used entry:
 \begin{itemize}
  \item Protein name -- identifier. If a protein has a quaternary structure,
- it's separated into polypeptide strands each of which has a unique identifier and associated GO terms
+ it is separated into polypeptide strands each of which has a unique identifier and associated GO terms
  (possibly distinct among strands of the same complex.)
  \item Primary structure -- the linear chain of amino acids.
  Many proteins in PDB have unidentified terminating (or sometimes other) amino acid residues.
@@ -440,7 +453,7 @@ The following data are thus extracted from each used entry:
  Before the relational learning phase, coordinates are used to calculate distances between $\alpha$-carbons discretized to 2Å.
  Note, however, that PDB entries often have resolution worse than 2Å.
  This is a potential problem in the data.
- The rationale behind including entries with worse resolution is that the dataset will be large and thus the solution
+ The rationale behind including entries with worse resolution is that the data set will be large and thus the solution
  is expected to be robust towards position measurement errors.
 \end{itemize}
 
@@ -449,47 +462,68 @@ Another information that PDB provides and could be used in learning is the ligan
 The idea is that protein function is mostly determined by the ligand and the structural parts 
 distant from the ligand are not so important.
 If only information about residues with certain distance from ligands were used,
-the dataset size could be greatly reduced possibly bearing almost the same information
+the data set size could be greatly reduced possibly bearing almost the same information
 exploitable for learning.
-Hence, it would be feasible to learn from larger dataset and train a better classifier.
+Hence, it would be feasible to learn from larger data set and train a better classifier.
 Application of this idea was rejected in this work,
-because it's unclear how much is ligand information defining for each GO term,
-but it's reasonable to assume that it varies. 
+because it is unclear how much is ligand information defining for each GO term,
+but it is reasonable to assume that it varies. 
 Therefore the evaluation results would be biased and performance of prediction
 on different GO terms could not be compared.
-It's, however, an interesting problem for future research in this field.
+It is, however, an interesting problem for future research in this field.
 
 Local mirrors of PDB databases were used in this work (see \url{http://www.rcsb.org/pdb/static.do?p=download/ftp/index.html}.)
 Secondary structures in FASTA format are available from \url{http://www.rcsb.org/pdb/static.do?p=download/http/index.html}.)
 Protein annotations, i.e. data that associate GO terms with actual genes (proteins -- PDB entries), were downloaded from
 \url{http://geneontology.org/page/download-annotations}, 
 the file \url{http://geneontology.org/gene-associations/gene_association.goa_pdb.gz}.
-Proteins, that are not associated with any of the studied functions are discarded from the dataset.
+Proteins, that are not associated with any of the studied functions are discarded from the data set.
 
 The association file also contain information about the biological taxon from which the protein was taken.
-In this work only proteins from \emph{Homo sapiens} (UniProt taxon id 9609) were used.
+In this work only proteins from \emph{Homo sapiens} were used.
+(UniProt taxon id 9609 identifies \emph{Homo sapiens} in the association file.) 
 The assumption behind this is that learning on a single organism should result in
 greater prediction precision for that organism.
 With relational learning methods however, it would be interesting to study, if there exist protein
 structural patterns for a given function, that are common even in evolutionary distant species.
 
-\subsection{Non-redundant dataset}
+In the work \cite{szabova} where similar methods were used to predict DNA-binding protein 
+function, only proteins in either their bound or unbound configuration were used.
+Arranging the data set to include only proteins of specific type of
+configuration makes sense if: 1) It is easy to determine this configuration type 
+before presenting a yet unidentified protein to the classifier. 
+2) This specific configuration is defined for the studied function.
+For binding proteins, this configuration type is either the bound
+or unbound configuration.
+In this work, the configuration is not taken into account, though.
+First, it is not obvious how to define the right configuration
+type for each function, since also non-binding functions
+are studied here (for example catalytic activity).
+Although binding proteins form a large subset of all the proteins
+in the dataset, using only (un)bound configurations  for them  would introduce
+some bias in the comparison of classification results.
+An advantage of not using specific configuration is that 
+the classifier should then learn to recognize 
+the protein in any configuration.
+(Albeit possibly with lesser precision.) 
+
+\subsection{Non-redundant data set}
 One problem with Protein Data Bank is that it contains many redundant entries --
 proteins that are almost identical.
 That can be caused for example by a minor mutation that preserves the protein's function.
 Redundant entries should be removed from the data being used for machine learning for two reasons:
-1) They bloat the dataset making the learning more computationally difficult.
-2) As a consequence of redundancy, many similar entries could appear in both training and testing dataset
+1) They bloat the data set making the learning more computationally difficult.
+2) As a consequence of redundancy, many similar entries could appear in both training and testing data set
 which would yield overly optimistic results when evaluated, 
 while the classifier could actually be overfitted.
-It's not obvious, how redundancy or protein similarity should exactly be defined,
+It is not obvious, how redundancy or protein similarity should exactly be defined,
 but in this work the approach to redundancy and it's removal described by \cite{maxind} is loosely followed.
 
 The basic idea is the following: 
-Assume, that there exists a reasonable similarity relation on the protein dataset. 
+Assume, that there exists a reasonable similarity relation on the protein data set. 
 This relation is represented by a graph -- distinct proteins are nodes and there
 is a edge between each two proteins that are similar by the given relation.
-We define a non-redundant dataset a set of proteins such that no two are similar.
+We define a non-redundant data set a set of proteins such that no two are similar.
 In other words, we would like to find a set of nodes in that graph such that no two are adjacent
 and we prefer this set to be the largest possible.
 This is a non-formal definition of the maximum independent set problem in graph theory.
@@ -504,7 +538,7 @@ Repeat the whole process several times and select the best solution (largest ind
 Now, the similarity of two proteins is defined as the inverse of their local alignment \emph{E value} computed by BLAST \cite{blast} \cite{blastp}.
 BLAST is an algorithm that finds and measures local alignment of two sequences,
 in our case of the sequences of amino acid residues of two proteins. 
-This means, it's a distance measure based purely on the primary structure of proteins.
+This means, it is a distance measure based purely on the primary structure of proteins.
 Let us denote by $S = BLAST(A,B)$ the score of alignment (BLOSUM62 substitution matrix is used) 
 of two proteins $A, B$.
 The BLAST program then also computes a number called \emph{Expect value} or simply \emph{E value}, 
@@ -518,11 +552,11 @@ Note, that generally $BLAST(A,B) \neq BLAST(B,A)$,
 so the closure under symmetry for the similarity relation is actually used.
 The question remains, how to choose the value $T$.
 For the purpose of this work $T = 10^{-50}$ was used.
-This choice was made intuitively and ad-hoc (to keep the dataset large enough, see below),
+This choice was made intuitively and ad-hoc (to keep the data set large enough, see below),
 since the author is not aware of any theory that would guide such decision.
 But at least to illustrate what the value means, here is an example of best local alignment match
 for two variants of the lysozyme protein (PDB ids 132L and 1QSW), for which the \texttt{blastp} program computed E value of $10^{-50}$
-(i.e. no proteins that would be ``more similar'' appear in the dataset together.):
+(i.e. no proteins that would be ``more similar'' appear in the data set together.):
 \begin{minipage}{\linewidth}
 \begin{verbatim}
 
@@ -538,6 +572,13 @@ Match KVF RCELA  +KR G+D YRG SL NW+C AK+ES +NT+ATN N  D STDYGI QINSR+  NDG+TP
 \end{verbatim}
 \end{minipage}
 Here, amino-acid residues are encoded by the standard single-letter code (see table \ref{tab:aaprops} for reference). 
+
+Some disadvantages follow from using BLAST as distance function.
+There could be some proteins which have the same primary structure, 
+but can exist in varying spatial configuration exhibiting different functions.
+It would do no harm to include both in the data set if the difference is large enough.
+For BLAST, however, they will be indistinguishable and as a result 
+only one of them will appear in the final dataset.
 
 \section{Relational learning}
 In this section, approach to machine learning using relational learning based on structural patterns
@@ -568,8 +609,8 @@ that there are three distinct residues, as the following conjunction:
 Now we can add the information about the residue type. The conjunction becomes:
 \[ Res(r1) \land Type(r1, glu) \land Res(r2) \land Type(r2, pro) \land Res(r3) \land Type(r3, asp). \]
 The predicate $Res$ may seem redundant now.
-The reason why it's included is that it makes it algorithmically easier to deal with incomplete information about a residue.
-It's exploited in templates for the RelF algorithm later.
+The reason why it is included is that it makes it algorithmically easier to deal with incomplete information about a residue.
+It is exploited in templates for the RelF algorithm later.
 This still contains no information about the primary structure, 
 which could be inserted in the following way:
 \begin{align*}
@@ -583,7 +624,7 @@ we may not know the residue type, but perhaps we know some other information abo
 
 The following information is encoded:
 \begin{itemize}
- \item Residue type -- simply the type of each amino acid, if it's known.
+ \item Residue type -- simply the type of each amino acid, if it is known.
  \item Distance between residues -- distances of $\alpha$-carbons discretized to 2Å with upper bound 14Å.
  This is a tertiary structure infromation, but it also implicitly includes primary structure 
  as neighboring amino acid residues are not too distant.
@@ -605,7 +646,7 @@ The Glu-Pro-Asp subsequence of 1APJ from the example is then encoded in the foll
 
 Note, that we can also think of the conjunction as a certain first order logic interpretation:
 it defines for which constants the used predicates are true.
-Each protein in the dataset is converted to this relational form.
+Each protein in the data set is converted to this relational form.
 It is obvious that this representation of proteins is great simplification.
 The hope is that this model captures some of the essential properties of the 
 protein while it is computationally feasible to work with such model.
@@ -649,14 +690,16 @@ Unknown or unidentified & X & Xxx & ? & ?
 
 \subsection{Learning with relational features}
 A technique called \emph{propositionalization} is employed in this work. 
-Generally, propositionalization is the transformation of a relational dataset
-into an attribute-value dataset.
-Attribute-value dataset can then be used as input to many
+Generally, propositionalization is the transformation of a relational data set
+into an attribute-value data set.
+Attribute-value data set can then be used as input to many
 state of the art machine learning algorithms, such as 
 Support Vector Machines.
 In this work, we use the RelF algorithm to perform the propositionalization,
 but in principle different supervised propositionalization
 techniques could be examined in this context.
+The TreeLiker software (\url{http://ida.felk.cvut.cz/treeliker/TreeLiker.html})
+was used as the implementation of RelF here.
 
 A brief description of the propositionalization idea used in RelF algorithm follows.
 For more detailed description, see the article \cite{relf}.
@@ -693,11 +736,12 @@ produces the empty conjunction:
 
 
 \paragraph{ } The basic idea in RelF propositionalization technique is now presented.
-RelF takes as input a relational dataset
-where each member is labeled as belonging to either positive or negative class.
+RelF takes as input a relational data set
+where each member is labeled as belonging to either positive or negative class
 and a \emph{template}. 
-The dataset is a set of first order logic conjunctions with positive ground literals,
+The data set is a set of first order logic conjunctions with positive ground literals,
 or equivalently set of first order logic interpretations.
+Transitivity of the $\prec$ relation is assumed for labeling the data.
 
 The template is a definition of a set of conjunctions called \emph{features}
 (note: not anymore with all terms ground)
@@ -730,7 +774,7 @@ Features can be generated from the template by the following procedure:
 \end{enumerate}
 Only $\theta$-irreducible features are outputted. 
 Note, that the actual implementation is different with regard to redundancy filtering. 
-It's proven in \cite{relf} that there is only a finite number of $\theta$-irreducible tree-like features
+It is proven in \cite{relf} that there is only a finite number of $\theta$-irreducible tree-like features
 which can be generated this way.
 An example of a feature that can be generated by RelF using the template from the example is:
 \[ Res(A) \land Res(B)\land Dist(A,B,8)\land Type(A, lys)\land Type(B, T)\land Polarity(T, polar). \]
@@ -744,7 +788,7 @@ can be found in \cite{szabova}.
 
 With this input, RelF examines the $\theta$-irreducible features that it generates from
 the template and evaluates if they are covered (in the sense of $\theta$-subsumption)
-by some of the examples in the dataset.
+by some of the examples in the data set.
 If yes, it stores this feature and outputs it's evaluation,
 which can be either binary (is covered / is not)
 or numerical (the number of different grounding substitutions $\theta$ 
@@ -768,7 +812,7 @@ that it is a significant advantage to use the RelF variant with grounding counti
 for DNA-binding protein function prediction.
 This is because features here correspond to protein structural patterns and
 it is not surprising that if a structural pattern know to be determining a certain function
-appears more frequently in a protein, it's more likely to exhibit that function.
+appears more frequently in a protein, it is more likely to exhibit that function.
 Also note, that binary output would not provide any advantage when further piped to Support Vector Machines algorithm.
 Therefore, the grounding counting RelF variant is also applied in this work. 
 
@@ -792,7 +836,7 @@ where negative examples are taken from the set of proteins which are not annotat
 as having the function.
 This may not be always true -- it is reasonable to expect that the laboratory protein
 function identification processes do not identify a function that the protein that does not
-actually have, but it's not realistic to assume that it will always identify all of the functions
+actually have, but it is not realistic to assume that it will always identify all of the functions
 the protein may have. 
 This way a protein with a certain function could end up appearing as a negative example 
 for that function, simply because that function has not yet been identified.
@@ -804,10 +848,10 @@ Dropping the redundant features filtering would cause a decrease in performance
 of uncertain extent. 
 The author of this work is not aware of any theory, that would describe such situations.
 Further, it is not obvious how to label at least some of the negative examples -
-i.e. to to find a subset of the dataset that certainly does not have the studied function.
+i.e. to to find a subset of the data set that certainly does not have the studied function.
 Semi-supervised learning algorithms Label Propagation and Label Spreading \cite{semi}
 where briefly examined as a replacement for SVM.
-RelF ran on fully labeled dataset as described above, but semi-supervised learning
+RelF ran on fully labeled data set as described above, but semi-supervised learning
 ran with positive examples labeled only.
 The resulting classifiers were only slightly better than ``random classifier''
 and hence far inferior to SVM (details on SVM performance are discussed later).
@@ -847,7 +891,7 @@ consistent,
 but it also improves it for most (but not all) nodes.
 
 The basic structure of the network is the same as the used ontology 
-with the \emph{is\_a} relation. 
+with the $\prec$ relation. 
 Nodes in this structure standing for molecular functions
 in the ontology are called \emph{hidden nodes} (marked $y_i$ in Figure \ref{fig:net}). 
 The direction of the nodes is unchanged.
@@ -855,20 +899,20 @@ This intuitively makes sense,
 because the direction of arrow in a Bayesian 
 network should mean causation
 and a we can think of a more specific term as partial cause
-for a more general one.
+for a more general one but not the other way around.
 we mean nodes standing for more specific function.
 Further note, that relationships which are implied by the implicit transitivity
-of $is_a$ relation are not included -- only direct child to parent connections are.
+of $\prec$ relation are not included -- only direct child to parent connections are.
 Further, each node has exactly one extra child node, these
 are called the \emph{observed nodes} (marked $\hat{y}_i$ in Figure \ref{fig:net}).
 The intended use of this network
-as marking all of the \emph{observed nodes}  as observed
+is marking all of the \emph{observed nodes} as observed
 while assigning them value of the output 
 of the classifier of their respective function from the previous step.
-It can be a real number, the output of the classifier's decision function,
-or also a binary value.
+It can be a real number -- the output of the classifier's decision function,
+or simply a binary value representing the classifier's decision.
 Then an inference algorithm is ran
-to find the most likely consistent assignment of binary (yes / no) values to $y_i$
+to find the most likely consistent assignment of binary (yes / no) values to be assigned to $y_i$
 and these inferred values in the hidden nodes 
 are considered to be the final classification output.
 
@@ -884,39 +928,97 @@ Figure copied from \cite{bnet}.}
 More formally, we want to find such consistent $y_1, ..., y_n$
 (where $n$ is the number of nodes in the network)
 which maximize the expression:
-\[P(y_1, ..., y_n | \hat{y}_1, ..., \hat{y}_n) \propto P(\hat{y}_1, ..., \hat{y}_n | y_1, ..., y_n) \cdot P(y_1, ..., y_n). \]
+\[P(y_1, ..., y_n \,|\, \hat{y}_1, ..., \hat{y}_n) \propto P(\hat{y}_1, ..., \hat{y}_n\, | \, y_1, ..., y_n) \cdot P(y_1, ..., y_n). \]
 Since the values $y_1, ..., y_n$ are independent, we can factor the conditional probability:
-\[P(\hat{y}_1, ..., \hat{y}_n | y_1, ..., y_n) = \prod_{i=1}^n P(\hat{y_i}|y_i). \]
+\[P(\hat{y}_1, ..., \hat{y}_n\, |\, y_1, ..., y_n) = \prod_{i=1}^n P(\hat{y_i} \,|\,y_i). \]
 Note, that in where $\hat{y_i}$ is real number,
-we will assume the distribution of $P(\hat{y_i}|y_i)$ to be Gaussian.
+we will assume the distribution of $P(\hat{y_i}\,|\,y_i)$ to be Gaussian.
 % TODO FIXME zdůvodnění proč je Gaussian
 %Then the joint distribution $P(\hat{y_i}, y_i)$ would be a mixture of Gaussians
 %with the mixture coefficients being the probabilities $P(y_i)$.
 Provided the network structure, using the conditional independence rule,
 the joint probability on $y_i$ can be factored as:
-\[ P(y_1, ..., y_n) = \prod_{i=1}^n P(y_i|\{y_j : j  \quad  is\_a \quad  i\}). \]
+\[ P(y_1, ..., y_n) = \prod_{i=1}^n P(y_i\,|\,\{y_j : j  \,  \prec \,  i\}). \]
 
-Now, conditional probability tables for the distributions $P(y_i|\{y_j : j  \quad  is\_a \quad  i\})$ 
+Now, conditional probability tables for the distributions $P(y_i\,|\,\{y_j : j  \,  \prec \,  i\})$ 
 can be simply computed from \emph{training} data by counting of occurrences.
 A prior count of 1 sample for each case is used to avoid the 
 possibility of zero probability for some cases.
-The parameters of the probabilities $P(\hat{y_i}|y_i)$ can be
+To ensure consistency of the output, however, 
+we shall set:
+\[ P(y_i = \top \, | \, \exists y \in \{y_j : j  \,  \prec \,  i\}, \, y = \top  ) = 1, \]
+which means that a node must be positive if some more specific term is positive.
+The parameters of the probabilities $P(\hat{y_i}\,|\,y_i)$ can be
 calculated by taking part of the \emph{testing} data
 (not used later for evaluation) to
-obtain $y_i$ values and estimate the parameters of $P(\hat{y_i}|y_i)$
+obtain $y_i$ values and estimate the parameters of $P(\hat{y_i}\,|\,y_i)$
 for example by the maximum likelihood method.
 In case of a binary classifier, 
 these parameters are contained within the confusion matrix divided 
 by the number of tested samples.
 
+There is one exception to the above: 
+The most general function called ``molecular\_function'',
+which is true for any protein
+(and thus it does not even make sense to train it.)
+We set the conditional probability table trivially to:
+\[ P(molecular\_function = \top \,|\, anything ) = 1. \]
+
 \section{Methodological remarks}
+In this section, the methodology concerning the evaluation
+of the experimental results is discussed.
+
+The following method is used to process data:
+Using 8-fold cross-validation split the input proteins into folds
+containing training and testing data.
+RelF is ran on training data and the testing 
+data are propositionalized given the features learned by RelF.
+Testing data in each fold are further split into two parts,
+let us call them ``test'' and ``validation'' sets.
+Classifiers are fitted on the propositionalized training data
+and the correcting Bayesian network is constructed
+for each fold by taking classifiers of all functions trained
+on the train set in the given fold
+and the probabilities $P(\hat{y_i}|y_i)$ are estimated from the test set.
+The performance of the classification both before and after the correction
+is performed on the validation set.
+
+% TODO: Výpočet jak moc vadí ne-stratifikace
+This approach is not perfect. 
+An noteworthy problem is that the cross-validation is not stratified,
+since the folds are the same for each function.
+The reason for this is is implementational, not principial:
+If the folds would be stratified with respect to a given 
+function, RelF could learn different features for different functions
+in the same fold.
+It is not possible in the TreeLiker software to 
+propositionalize a relational data set given arbitrary features.
+% FIXME!!
+
+
+
 %*****************************************************************************
 \chapter{Realization}
-Popis implementace/realizace se zaměřením na nestandardní části řešení.
+In this chapter, more technical details about the actual implementation 
+of the ideas described in the previous chapter are discussed.
 
+A crucial factor in almost every machine learning task is the 
+size of the learning data set. 
+The entries extracted from Protein Data Bank database, filtered and made non-redundant
+as described 
 
 %*****************************************************************************
 \chapter{Experimental results}
+
+\begin{landscape}
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=21cm]{figures/go-basic_children}
+\caption{The used subset of the Gene Ontology}
+\label{fig:go}
+\end{center}
+\end{figure}
+\end{landscape}
 
 \begin{itemize}
  \item Způsob, průběh a výsledky testování.
