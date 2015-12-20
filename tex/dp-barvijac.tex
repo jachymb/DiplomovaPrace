@@ -430,6 +430,7 @@ these also happen to be some of the most general terms in the ontology.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
 
 \subsection{Proteins}
+\label{ssec:proteins}
 Data about proteins used in this work were extracted from Research Collaboratory for Structural Bioinformatics (RCSB) Protein Data Bank (PDB) \cite{pdb}.
 PDB currently publishes over 100000 entries containing information about identified existing protein structures.
 The entries contain various details about the molecular structure,
@@ -508,6 +509,7 @@ the protein in any configuration.
 (Albeit possibly with lesser precision.) 
 
 \subsection{Non-redundant data set}
+\label{ssec:redundancy}
 One problem with Protein Data Bank is that it contains many redundant entries --
 proteins that are almost identical.
 That can be caused for example by a minor mutation that preserves the protein's function.
@@ -622,7 +624,7 @@ we may not know the residue type, but perhaps we know some other information abo
 (for example the $Next$ relation)
 
 
-The following information is encoded:
+The following information is actually encoded in the implementation of this work:
 \begin{itemize}
  \item Residue type -- simply the type of each amino acid, if it is known.
  \item Distance between residues -- distances of $\alpha$-carbons discretized to 2Å with upper bound 14Å.
@@ -650,6 +652,21 @@ Each protein in the data set is converted to this relational form.
 It is obvious that this representation of proteins is great simplification.
 The hope is that this model captures some of the essential properties of the 
 protein while it is computationally feasible to work with such model.
+
+Also note, how easy it is in this relational representation to deal with missing data:
+If for example we do not know the secondary structure in which a certain amino acid 
+residue occurs or the polarity of an amino acid in case of Asx and Glx (see Table \ref{tab:aaprops})
+or even if there is completely missing information about an amino acid residue,
+we can simply omit the literals relevant to this information.
+So for example if we did not know the secondary structure of $r1$,
+we would drop the literal $SecStr(r1, turn)$ in the above example.
+However, this is not completely correct approach and it introduces noise in the data:
+The algorithms that later work with this data cannot distinguish information
+that is not known and information that is know to be false.
+For example,
+not including $SecStr(r1, turn)$ because we do not know it although it is true
+is very different from not including $Type(r1, ala)$ which is know to be false,
+yet these two cases are represented the same way.
 
 \begin{table}
 \begin{center}
@@ -681,7 +698,7 @@ Tryptophan & W & Trp & neutral & nonpolar   \\ \hline
 Tyrosine & Y & Tyr & neutral & polar  \\ \hline
 Valine & V & Val & neutral & nonpolar \\ \hline
 Leucine or islueucine & J & Xle & neutral & nonpolar \\ \hline
-Unknown or unidentified & X & Xxx & ? & ? 
+Unknown or unidentified & X & Xxx & ? & ? \\ \hline
 \end{tabular}
 \caption{Proteinogenic amino acids and their used properties}
 \label{tab:aaprops}
@@ -805,7 +822,7 @@ In general,
 the $\theta$-subsumption and $\theta$-reduction problems are NP-HARD.
 For propositions which are tree-like, however, the problems 
 (which obviously have to be solved many times during the RelF algorithm run)
-can be solved in polynomial time.
+can be solved in polynomial time, which makes the task tractable.
 
 The results in \cite{szabova} show,
 that it is a significant advantage to use the RelF variant with grounding counting
@@ -914,11 +931,12 @@ or simply a binary value representing the classifier's decision.
 Then an inference algorithm is ran
 to find the most likely consistent assignment of binary (yes / no) values to be assigned to $y_i$
 and these inferred values in the hidden nodes 
-are considered to be the final classification output.
+are thresholded to produce the final classification output.
+
 
 \begin{figure}[h]
 \begin{center}
-\includegraphics[width=5cm]{figures/net}
+\includegraphics[width=5.5cm]{figures/net}
 \caption{Simple example of the structure of the network.
 Figure copied from \cite{bnet}.}
 \label{fig:net}
@@ -933,6 +951,7 @@ Since the values $y_1, ..., y_n$ are independent, we can factor the conditional 
 \[P(\hat{y}_1, ..., \hat{y}_n\, |\, y_1, ..., y_n) = \prod_{i=1}^n P(\hat{y_i} \,|\,y_i). \]
 Note, that in where $\hat{y_i}$ is real number,
 we will assume the distribution of $P(\hat{y_i}\,|\,y_i)$ to be Gaussian.
+
 % TODO FIXME zdůvodnění proč je Gaussian
 %Then the joint distribution $P(\hat{y_i}, y_i)$ would be a mixture of Gaussians
 %with the mixture coefficients being the probabilities $P(y_i)$.
@@ -964,22 +983,80 @@ which is true for any protein
 We set the conditional probability table trivially to:
 \[ P(molecular\_function = \top \,|\, anything ) = 1. \]
 
-\section{Methodological remarks}
-In this section, the methodology concerning the evaluation
-of the experimental results is discussed.
+This assumption that the distributions of $P(\hat{y_i}\,|\,y_i)$ are Gaussian  
+deserves some justification.
+It is an ad-hoc assumption:
+Some simple distribution is needed to for us
+to be able to perform Bayesian inference
+and using a continuous distribution,
+already makes inference somewhat difficult.
+See the Figure \ref{fig:gaussians}
+for sample comparison with experimental results.
+We can see that the real underlying distributions are apparently not exactly Gaussian,
+but close enough to be reasonably approximated as Gaussian.
+It could be examined by statistical normality tests to get more detailed view on this assumption.
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=12cm]{figures/g}
+\caption{Distributions of decision function values for DNA binding protein function -- histograms of real data and estimated Gaussians;
+horizontal axis shows the oriented distance from the SVM's separating hyperplane, vertical axis shows probability density.}
+\label{fig:gaussians}
+\end{center}
+\end{figure}
+
+Inference on this Bayesian network is done using the \emph{variational Bayes} \cite{varb} method.
+Variational Bayes is an algorithm used to
+obtain the approximate posterior probabilities $P(y_i \, | \, \hat{y}_1, ..., \hat{y}_n).$
+It was chosen, because it can handle nodes with Gaussian distributions within the network.
+Once we have the posterior probabilities, 
+we can simply make the final classification by setting:
+\[ y_i := P(y_i = \top \, | \, \hat{y}_1, ..., \hat{y}_n) > \frac{1}{2}, \]
+for each $y_i$.
+
+\section{Experimental settings and methodological remarks}
+In this section, the experimental setting configuration and
+methodology concerning the evaluation
+of the experimental results are discussed.
+
+With the filtering described in subsection \ref{ssec:proteins}
+and making the dataset non-redundant as described in subsection \ref{ssec:redundancy},
+we ended up with 3607 proteins.
+This number is reduced to $2^{11} = 2048$ for tractability (but also aesthetical) reasons. 
+The same set is used for all studied functions.
+Given this set, only functions from the Gene Ontology that have at least $2^7 = 128$
+proteins associated with them (considering transitivity of $\prec$) are used.
+The resulting subset of the ontology with it's structure is displayed on Figure \ref{fig:go}.
+The GO identifiers and the numbers samples for each of there function is present in Table \ref{table:terms}.  
+TreeLiker is then configured to run with subsampling.
+That means, that RelF is ran repeatedly on a random subset of the whole data set
+and in the end, it outputs the data propositionalized on the
+union of features found in all iterations.
+Sample size is set to $2^9=512$ and number of samples (iterations) is set to $2^3=8$.
+
+\begin{landscape}
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=21cm]{figures/go-basic_children}
+\caption{The used subset of the Gene Ontology}
+\label{fig:go}
+\end{center}
+\end{figure}
+\end{landscape}
 
 The following method is used to process data:
 Using 8-fold cross-validation split the input proteins into folds
 containing training and testing data.
 RelF is ran on training data and the testing 
 data are propositionalized given the features learned by RelF.
-Testing data in each fold are further split into two parts,
+Testing data in each fold are further split into two equally sized parts,
 let us call them ``test'' and ``validation'' sets.
+The size of both test and validation set is thus $2048 / 8 / 2 =  128$.
 Classifiers are fitted on the propositionalized training data
 and the correcting Bayesian network is constructed
 for each fold by taking classifiers of all functions trained
 on the train set in the given fold
-and the probabilities $P(\hat{y_i}|y_i)$ are estimated from the test set.
+and the probabilities $P(\hat{y_i}\,|\,y_i)$ are estimated from the test set.
 The performance of the classification both before and after the correction
 is performed on the validation set.
 
@@ -992,9 +1069,123 @@ If the folds would be stratified with respect to a given
 function, RelF could learn different features for different functions
 in the same fold.
 It is not possible in the TreeLiker software to 
-propositionalize a relational data set given arbitrary features.
-% FIXME!!
+propositionalize a relational data set given arbitrary features
+(already learned on different data, in this case).
+Therefore, if we kept some proteins aside from the beginning 
+with the intention to use them for final evaluation,
+we could not propositionalize them.
+If instead we used the method described above but with stratification,
+we could correctly (without information leakage) evaluate the network only with proteins
+that are in the intersection of the test sets of all used functions.
+It is likely that this set would be very small or even empty.
 
+The impact of not stratifying the data set depends on the number of cross validation folds
+and the ratio of samples of a given function to the data set size (see Table \ref{table:terms}).
+More folds imply smaller test sets, 
+which in turn increases the probability of the class representatives in test set
+being disproportional to the training set.
+The same follows from decreasing the ratio.
+This is only globally true, but locally not monotonic, see below.
+
+As we will see in the Results chapter, the real impact of not using stratification
+in cross validation is significant.
+(It even happened that a test set in a fold for a function with small number of representatives in
+the original data set had zero positive examples rendering the evaluation meaningless.)
+Therefore a more detailed analysis of this problem follows,
+which makes for an interesting minor research problem on it's own:
+
+Assume that the original data set has size $M$ and contains $K$
+positive examples for a given function.
+Now we randomly take $m$ samples to be the test set (for train set, the reasoning would be the same).
+The probability that there are now $k$ positive samples 
+in the test set is given by the hypergeometric probability distribution.
+Now we can ask -- for a given $M, K, m$ and a constant $\alpha > 1$, what is the probability $q$ where:
+\[ q = P\left(1 / \alpha \le \frac{\frac{K}{M}}{\frac{k}{m}} \le 1 \cdot \alpha \right) \,  ? \]
+Simply saying: Is it probable that the ratio of positive samples in test set will be much different
+from the ratio in the original set? 
+Will it be at most $\alpha$-times smaller or larger?
+Unfortunately, it is very complicated to work with this analytically due to the combinatorial 
+nature of hypergeometric distribution.
+(Read: The \texttt{FullSimplify} function in Mathematica could not work this out.)
+However, it can be worked with numerically.
+Figure \ref{fig:hyper} displays this piquantly non-monotonic probability for $M = 2048, m = 128, \alpha = 1.25$ and interesting 
+values of $K$.
+Further, the probabilities for values $\alpha \in \{1.1, 1.25, 1.5\}$ are shown in Table \ref{table:terms} 
+for better insight.
+The following Mathematica source code was used to generate the plot in Figure \ref{fig:hyper} and it can be reused to examine the problem with different parameters $M,K,m,\alpha$:
+\begin{verbatim}
+M = 2048; m = 128; \[Alpha] = 1.25; minK = 128; maxK = 768;
+q := Module[{K, \[Alpha]}, Function[{K, \[Alpha]}, N[
+    Probability[
+      1/\[Alpha] <= (K/M)/(k/m) <= \[Alpha],
+      k \[Distributed] HypergeometricDistribution[m, K, M]]]]] 
+ListPlot[Table[
+   q[K, \[Alpha]],
+   {K, minK, maxK}],
+ Filling -> Axis,
+ PlotStyle -> {AbsolutePointSize[1]},
+ PlotRange -> {{minK, maxK}, {0, 1}},
+ DataRange -> {minK, maxK},
+ AxesOrigin -> {minK, 0},
+ AxesLabel -> {"K", 
+   "q : \[Alpha] = " <> ToString[\[Alpha]] <> ", M = " <> 
+    ToString[M] <> ", m = " <> ToString[m]}]
+\end{verbatim}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics{figures/hyper}
+\caption{Probability $q$ that test set is ``stratified enough''.
+$K$ is the number of positive samples in original data set.}
+\label{fig:hyper}
+\end{center}
+\end{figure}
+
+
+% FIXME!!
+\begin{table}
+\begin{small}
+\begin{center}
+\begin{tabular}{lrrrrrl}
+\textbf{GO id} & $K$ & \textbf{Ratio} & $q_{\alpha = 1.1}$ & $q_{\alpha = 1.25} $ & $q_{\alpha = 1.5}$ &  \textbf{Name} \\ \hline
+GO:0003674  &  2048  &  1.00  & 1.00 & 1.00 & 1.00 &    molecular function \\ \hline
+GO:0003824  &  764   &  0.37  & 0.60 & 0.95 & 1.00 &    catalytic activity \\ \hline
+GO:0005488  &  1627  &  0.79  & 0.97 & 1.00 & 1.00 &    binding \\ \hline
+GO:0005515  &  731   &  0.36  & 0.61 & 0.95 & 1.00 &   protein binding \\ \hline
+GO:0016740  &  285   &  0.14  & 0.31 & 0.70 & 0.94 &   transferase activity \\ \hline
+GO:0016787  &  290   &  0.14  & 0.31 & 0.70 & 0.93 &   hydrolase activity \\ \hline
+GO:0036094  &  325   &  0.16  & 0.38 & 0.73 & 0.95 &    small molecule binding \\ \hline
+GO:0043167  &  717   &  0.35  & 0.61 & 0.95 & 1.00 &    ion binding \\ \hline
+GO:0097159  &  806   &  0.39  & 0.65 & 0.96 & 1.00 &    organic cyclic compound binding \\ \hline
+GO:0097367  &  186   &  0.09  & 0.25 & 0.56 & 0.87 &   carbohydrate derivative binding \\ \hline
+GO:1901363  &  797   &  0.39  & 0.60 & 0.97 & 1.00 &   heterocyclic compound binding \\ \hline
+GO:0001882  &  156   &  0.08  & 0.27 & 0.61 & 0.81 &  nucleoside binding \\ \hline
+GO:0003676  &  611   &  0.30  & 0.57 & 0.91 & 1.00 &    nucleic acid binding \\ \hline
+GO:0005102  &  148   &  0.07  & 0.27 & 0.51 & 0.76 &    receptor binding \\ \hline
+GO:0043168  &  256   &  0.12  & 0.32 & 0.72 & 0.93 &   anion binding \\ \hline
+GO:0043169  &  520   &  0.25  & 0.47 & 0.88 & 0.99 &   cation binding \\ \hline
+GO:1901265  &  279   &  0.14  & 0.40 & 0.71 & 0.94 &    nucleoside phosphate binding \\ \hline
+GO:0000166  &  279   &  0.14  & 0.40 & 0.71 & 0.94 &    nucleotide binding \\ \hline
+GO:0001883  &  153   &  0.07  & 0.27 & 0.51 & 0.81 &    purine nucleoside binding \\ \hline
+GO:0003677  &  221   &  0.11  & 0.34 & 0.61 & 0.87 &    DNA binding \\ \hline
+GO:0003723  &  199   &  0.10  & 0.24 & 0.64 & 0.86 &   RNA binding \\ \hline
+GO:0032549  &  152   &  0.07  & 0.27 & 0.51 & 0.81 &    ribonucleoside binding \\ \hline
+GO:0035639  &  148   &  0.07  & 0.27 & 0.51 & 0.76 &  purine ribonucleoside triphosphate binding \\ \hline
+GO:0046872  &  507   &  0.25  & 0.47 & 0.86 & 0.99 &    metal ion binding \\ \hline
+GO:0017076  &  154   &  0.08  & 0.27 & 0.60 & 0.81 &    purine nucleotide binding \\ \hline
+GO:0032550  &  151   &  0.07  & 0.27 & 0.51 & 0.80 &   purine ribonucleoside binding \\ \hline
+GO:0032553  &  157   &  0.08  & 0.27 & 0.61 & 0.82 & ribonucleotide binding \\ \hline
+GO:0046914  &  220   &  0.11  & 0.34 & 0.70 & 0.87 &    transition metal ion binding \\ \hline
+GO:0008270  &  185   &  0.09  & 0.25 & 0.56 & 0.87 &    zinc ion binding \\ \hline
+GO:0030554  &  132   &  0.06  & 0.28 & 0.54 & 0.78 &   adenyl nucleotide binding \\ \hline
+GO:0032555  &  153   &  0.07  & 0.27 & 0.51 & 0.81 &    purine ribonucleotide binding \\ \hline
+GO:0032559  &  131   &  0.06  & 0.28 & 0.54 & 0.78 &   adenyl ribonucleotide binding \\ \hline
+\end{tabular}
+\end{center}
+\end{small}
+\caption{Counts of positive samples in the data set for each function.}
+\label{table:terms}
+\end{table}
 
 
 %*****************************************************************************
@@ -1010,15 +1201,6 @@ as described
 %*****************************************************************************
 \chapter{Experimental results}
 
-\begin{landscape}
-\begin{figure}[h]
-\begin{center}
-\includegraphics[width=21cm]{figures/go-basic_children}
-\caption{The used subset of the Gene Ontology}
-\label{fig:go}
-\end{center}
-\end{figure}
-\end{landscape}
 
 \begin{itemize}
  \item Způsob, průběh a výsledky testování.
