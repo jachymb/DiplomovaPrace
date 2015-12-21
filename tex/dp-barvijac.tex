@@ -194,7 +194,10 @@ unicode=true,
 
 \acknowledgements
 \noindent
-Zde můžete napsat své poděkování, pokud chcete a máte komu děkovat.
+%Access to computing and storage facilities owned by parties and projects contributing to the National Grid Infrastructure MetaCentrum, provided under the programme "Projects of Large Infrastructure for Research, Development, and Innovations" (LM2010005), is greatly appreciated.
+%Access to the CERIT-SC computing and storage facilities provided under the programme Center CERIT Scientific Cloud, part of the Operational Program Research and Development for Innovations, reg. no. CZ. 1.05/3.2.00/08.0144, is greatly appreciated.
+Computational resources were provided by the MetaCentrum under the program LM2010005 and the CERIT-SC under the program Centre CERIT Scientific Cloud, part of the Operational Program Research and Development for Innovations, Reg. no. CZ.1.05/3.2.00/08.0144.
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%   Prohlaseni / Declaration 
@@ -337,7 +340,7 @@ the terms ``gene'' and ``protein'' are interchangeable for the purpose of this t
 (especially in the context of Gene Ontology, which we actually use more like ``protein function ontology''.)
 
 %These amino acids are chained by peptide bond.
-With rare exceptions, that we won't consider, each of the amino acids is one the
+\paragraph{Protein structural levels} With rare exceptions, that we won't consider, each of the amino acids is one the
 so-called proteinogenic amino acids (see table \ref{tab:aaprops}). 
 This chain as a linear sequence of symbols is defined to be the protein's \emph{primary structure}.
 There are also several types of structures that appear in proteins locally and are common among
@@ -363,7 +366,7 @@ the quaternary structure itself is ignored.
 Interacting with other molecules (including the composition of a quaternary structure)
 may temporarily or even permanently change the protein's lower level structures,
 especially tertiary structure.
-A change in protein's spatial configuration may also change the set of functions
+A change in protein's spatial confomation may also change the set of functions
 it exhibits. 
 In other ways, changing of structure can be part of the protein's function:
 For example a protein with DNA-binding function will somewhat change it's tertiary
@@ -374,7 +377,7 @@ function when unbound.
 \begin{figure}[h]
 \begin{center}
 \includegraphics[width=21cm]{figures/Protein_structure}
-\caption{Structure of the protein 1EFN. Adapted from \emph{Wikipedia}}
+\caption[Structure levels of the protein 1EFN]{Structure levels of the protein 1EFN. Adapted from \emph{Wikipedia}}
 \label{fig:Protein_structure}
 \end{center}
 \end{figure}
@@ -393,9 +396,11 @@ function when unbound.
 % Analýza a návrh implementace (včetně diskuse různých alternativ a volby implementačního prostředí).
 
 \section{Data sources and preprocessing}
+\label{sec:data}
 In this section, the nature and sources of the input data used later for machine learning are described.
 
 \subsection{Gene Ontology}
+\label{ssec:go}
 Gene Ontology (GO) \cite{go} is a representation of relationships among various \emph{terms} identifying common (species-independent)
 biological processes, cellular components and molecular functions.
 The GO terms definitions and relationships among them are provided by human experts. 
@@ -473,14 +478,14 @@ Therefore the evaluation results would be biased and performance of prediction
 on different GO terms could not be compared.
 It is, however, an interesting problem for future research in this field.
 
-Local mirrors of PDB databases were used in this work (see \url{http://www.rcsb.org/pdb/static.do?p=download/ftp/index.html}.)
+\paragraph{Data location} Local mirrors of PDB databases were used in this work (see \url{http://www.rcsb.org/pdb/static.do?p=download/ftp/index.html}.)
 Secondary structures in FASTA format are available from \url{http://www.rcsb.org/pdb/static.do?p=download/http/index.html}.)
 Protein annotations, i.e. data that associate GO terms with actual genes (proteins -- PDB entries), were downloaded from
 \url{http://geneontology.org/page/download-annotations}, 
 the file \url{http://geneontology.org/gene-associations/gene_association.goa_pdb.gz}.
 Proteins, that are not associated with any of the studied functions are discarded from the data set.
 
-The association file also contain information about the biological taxon from which the protein was taken.
+\paragraph{Species} The association file also contain information about the biological taxon from which the protein was taken.
 In this work only proteins from \emph{Homo sapiens} were used.
 (UniProt taxon id 9609 identifies \emph{Homo sapiens} in the association file.) 
 The assumption behind this is that learning on a single organism should result in
@@ -488,24 +493,24 @@ greater prediction precision for that organism.
 With relational learning methods however, it would be interesting to study, if there exist protein
 structural patterns for a given function, that are common even in evolutionary distant species.
 
-In the work \cite{szabova} where similar methods were used to predict DNA-binding protein 
-function, only proteins in either their bound or unbound configuration were used.
+\paragraph{Protein confomations} In the work \cite{szabova} where similar methods were used to predict DNA-binding protein 
+function, only proteins in either their bound or unbound confomation were used.
 Arranging the data set to include only proteins of specific type of
-configuration makes sense if: 1) It is easy to determine this configuration type 
+confomation makes sense if: 1) It is easy to determine this confomation type 
 before presenting a yet unidentified protein to the classifier. 
-2) This specific configuration is defined for the studied function.
-For binding proteins, this configuration type is either the bound
-or unbound configuration.
-In this work, the configuration is not taken into account, though.
-First, it is not obvious how to define the right configuration
+2) This specific confomation is defined for the studied function.
+For binding proteins, this confomation type is either the bound
+or unbound confomation.
+In this work, the confomation is not taken into account, though.
+First, it is not obvious how to define the right confomation
 type for each function, since also non-binding functions
 are studied here (for example catalytic activity).
 Although binding proteins form a large subset of all the proteins
-in the dataset, using only (un)bound configurations  for them  would introduce
+in the dataset, using only (un)bound confomations  for them  would introduce
 some bias in the comparison of classification results.
-An advantage of not using specific configuration is that 
+An advantage of not using specific confomation is that 
 the classifier should then learn to recognize 
-the protein in any configuration.
+the protein in any confomation.
 (Albeit possibly with lesser precision.) 
 
 \subsection{Non-redundant data set}
@@ -577,7 +582,7 @@ Here, amino-acid residues are encoded by the standard single-letter code (see ta
 
 Some disadvantages follow from using BLAST as distance function.
 There could be some proteins which have the same primary structure, 
-but can exist in varying spatial configuration exhibiting different functions.
+but can exist in varying spatial confomation exhibiting different functions.
 It would do no harm to include both in the data set if the difference is large enough.
 For BLAST, however, they will be indistinguishable and as a result 
 only one of them will appear in the final dataset.
@@ -588,6 +593,7 @@ is briefly explained and
 it's application to the protein function prediction in this work is explained.
 
 \subsection{Relational representation of proteins}
+\label{ssec:relrepr}
 Let us first define how proteins can be represented as first order logic propositions.
 The data will be fed to the RelF algorithm,
 which expects a set of conjunctions of positive ground literals.
@@ -903,9 +909,11 @@ is hidden in the parameters of the probability
 distributions in it's nodes 
 which can be learned from relationships between
 labels on both training and testing data.
-This solution not only makes the classification 
+In the experimental settings of \cite{bnet},
+this solution not only made the classification 
 consistent,
-but it also improves it for most (but not all) nodes.
+but it also improved it for most (but not all) nodes.
+That is a major reason, why it is also tested in this work.
 
 The basic structure of the network is the same as the used ontology 
 with the $\prec$ relation. 
@@ -937,7 +945,7 @@ are thresholded to produce the final classification output.
 \begin{figure}[h]
 \begin{center}
 \includegraphics[width=5.5cm]{figures/net}
-\caption{Simple example of the structure of the network.
+\caption[Example of the structure of the Bayesian network]{Simple example of the structure of the network.
 Figure copied from \cite{bnet}.}
 \label{fig:net}
 \end{center}
@@ -999,7 +1007,7 @@ It could be examined by statistical normality tests to get more detailed view on
 \begin{figure}[h]
 \begin{center}
 \includegraphics[width=12cm]{figures/g}
-\caption{Distributions of decision function values for DNA binding protein function -- histograms of real data and estimated Gaussians;
+\caption[Probability distributions of decision function values for DNA binding]{Distributions of decision function values for DNA binding protein function -- histograms of real data and estimated Gaussians;
 horizontal axis shows the oriented distance from the SVM's separating hyperplane, vertical axis shows probability density.}
 \label{fig:gaussians}
 \end{center}
@@ -1015,7 +1023,7 @@ we can simply make the final classification by setting:
 for each $y_i$.
 
 \section{Experimental settings and methodological remarks}
-In this section, the experimental setting configuration and
+In this section, the experimental setting confomation and
 methodology concerning the evaluation
 of the experimental results are discussed.
 
@@ -1023,6 +1031,10 @@ With the filtering described in subsection \ref{ssec:proteins}
 and making the dataset non-redundant as described in subsection \ref{ssec:redundancy},
 we ended up with 3607 proteins.
 This number is reduced to $2^{11} = 2048$ for tractability (but also aesthetical) reasons. 
+This significantly more than the size of the largest data set used in the work
+\cite{szabova} for DNA binding prediction,
+where 138 DNA-binding and 843 non-DNA-binding (981 in total) proteins were used.
+
 The same set is used for all studied functions.
 Given this set, only functions from the Gene Ontology that have at least $2^7 = 128$
 proteins associated with them (considering transitivity of $\prec$) are used.
@@ -1052,8 +1064,20 @@ data are propositionalized given the features learned by RelF.
 Testing data in each fold are further split into two equally sized parts,
 let us call them ``test'' and ``validation'' sets.
 The size of both test and validation set is thus $2048 / 8 / 2 =  128$.
-Classifiers are fitted on the propositionalized training data
-and the correcting Bayesian network is constructed
+Classifiers are fitted on the propositionalized training data.
+The state of the art SVM classifier with Radial Basis Function (RBF)
+kernel and $C = 1$ parameter is used.
+Random forest and AdaBoost classifiers were also examined 
+and they tend to give similar results as RBF SVM,
+but the nature of their decision function is different
+and would require appropriate modifications in the construction of the 
+correcting Bayesian network.
+The training samples are weighted in such way, that the total weights
+of positive samples is equal to the total weight of negative samples.
+Samples within each class have equal weights. 
+(This could be refined for example by assigning lesser weight
+to proteins with more unknown information.)
+Subsequently the correcting Bayesian network is constructed
 for each fold by taking classifiers of all functions trained
 on the train set in the given fold
 and the probabilities $P(\hat{y_i}\,|\,y_i)$ are estimated from the test set.
@@ -1112,7 +1136,9 @@ Figure \ref{fig:hyper} displays this piquantly non-monotonic probability for $M 
 values of $K$.
 Further, the probabilities for values $\alpha \in \{1.1, 1.25, 1.5\}$ are shown in Table \ref{table:terms} 
 for better insight.
-The following Mathematica source code was used to generate the plot in Figure \ref{fig:hyper} and it can be reused to examine the problem with different parameters $M,K,m,\alpha$:
+We can observe, that depending on $K$, the values range from reasonable to questionable but not completely senseless.
+The following Mathematica source code was used to generate the plot in Figure \ref{fig:hyper}
+and it can be reused to examine this problem with general values for parameters $M,m,\alpha$:
 \begin{verbatim}
 M = 2048; m = 128; \[Alpha] = 1.25; minK = 128; maxK = 768;
 q := Module[{K, \[Alpha]}, Function[{K, \[Alpha]}, N[
@@ -1135,7 +1161,7 @@ ListPlot[Table[
 \begin{figure}[h]
 \begin{center}
 \includegraphics{figures/hyper}
-\caption{Probability $q$ that test set is ``stratified enough''.
+\caption[Plot of probability that test set is ``stratified enough'']{Probability $q$ that test set is ``stratified enough''.
 $K$ is the number of positive samples in original data set.}
 \label{fig:hyper}
 \end{center}
@@ -1187,20 +1213,116 @@ GO:0032559  &  131   &  0.06  & 0.28 & 0.54 & 0.78 &   adenyl ribonucleotide bin
 \label{table:terms}
 \end{table}
 
+Finally, let us remark that although cross-validation is normally used only to evaluate
+the classifier performance and the final classifier is produced by training 
+on the whole set, this is not done here.
+The reasons are two, first the learning is already very computationally demanding
+and this would make it even more and second, this work
+is intended to be experimental only and the classifier will not be 
+immediately applied, so it would not be useful anyway.
 
 %*****************************************************************************
-\chapter{Realization}
+\chapter{Realization and implementation}
+\label{ch:realization}
 In this chapter, more technical details about the actual implementation 
 of the ideas described in the previous chapter are discussed.
 
-A crucial factor in almost every machine learning task is the 
-size of the learning data set. 
-The entries extracted from Protein Data Bank database, filtered and made non-redundant
-as described 
+\section{Requirements} implementation of this work was done using combinations of Linux shell scripts
+and novel software written in the Python programming language.
+The scikit-learn \cite{sklearn} library was used as 
+implementation of machine learning algorithms including SVM, cross validation and receiver operating characteristic evaluation.
+The BayesPy (\url{http://www.bayespy.org/}) library is used for representation and inference of 
+the correcting Bayesian networks.
+The Matplotlib library is used to create figures presented in the results chapter \ref{ch:results}.
+The dill library is necessary for data serialization done for speed and memory optimizations.
+Python version $\ge$ 3.5 is required.
+Finally a crucial component is the TreeLiker software,
+used as RelF implementation,
+which is a standalone third party product.
+
+
+\section{Environment preparation} The implementation of this work can be divided into two parts that can be ran independently once some data are present:
+1) Scripts that download and prepare the data.
+2) Python script that performs the learning and evaluation.
+We will first describe the data preparation.
+
+First of all, the project should be configured in the \texttt{config.sh} file,
+which contains mainly names of data source files and numerical parameters
+such as the required data set size and so on.
+There is a sample configuration file present with the name \texttt{config-sample.sh},
+which should be self-explanatory.
+
+Then the data are downloaded from the sources mentioned in section \ref{sec:data}.
+Note, that the entire PDB archives (a gzipped xml file for each of the $\approx$ 110000 protein entries)
+available for download using \texttt{rsync} tool add up to 42GiB to this date,
+which may take a long time to download.
+This can be done by running the \texttt{updatadata.sh}
+
+Once the data are downloaded, the \texttt{blastdb.sh} script can be ran,
+which filters the protein entries as described in subsection \ref{ssec:proteins}
+and calculates pairwise BLAST distances. 
+This is done using the offline BLAST+ software package
+available at \url{ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.2.31/}
+and running the \texttt{makeblastdb} and \texttt{blastp} commands. 
+(See the script for details.)
+The filtering results in $n > 40000$ candidate proteins.
+Computing pairwise BLAST distance requires $O(n^2)$ local alignment computations.
+That is a lengthy computation which took about four hours on a 3.1 GHz processor.
+The results are stored and a non-redundant data set 
+is generated from the candidate set using the method described in \ref{ssec:redundancy}.
+The non-redundant data set can be also generated independently using the 
+\texttt{dp/maximumIndependentSet.py} script.
+
+Before the project environment is completely ready,
+the script \texttt{updatadata.sh} has to be run once more before first run to prepare
+serialized associations for the main program which enables it to run faster.
+Then, the \texttt{run.sh} script can be ran.
+(Alternatively \texttt{main.py} can be ran instead, but parameters
+are not taken from \texttt{config.sh} and have to be entered in command line,
+use \texttt{main.py $--$help} for details.)
+There is one serious performance issue:
+Depending on the protein entry size,
+it can take several seconds to decompress and parse a single one.
+For this reason, once parsed, the relevant data
+(name, primary structure, secondary structure information and distances
+between amino acid residues) is serialized and stored.
+When the protein data are requested again, even in subsequent 
+runs of the program, it is available quickly.
+
+\section{Main processing} When ran the program first parses the ontology in the obo format and protein annotation file
+automatically downloaded previously from Gene Ontology servers.
+It clips the data set to the required maximal size and decides which
+protein functions have enough positive examples in order to be studied.
+For each of these functions a copy of the data set 
+with the function's respective labels is
+converted to the 
+relational format described in \ref{ssec:relrepr} in the ``pseudo-prolog''
+syntax understood by TreeLiker.
+A TreeLiker batch file describing how the propositionalization
+should exactly be performed including cross validation considerations
+is also generated.
+Then, the TreeLiker software is called as a sub-process.
+That is the most computationally demanding part of the data flow.
+In the described settings, it ran for approximately 23 hours for each function.
+(That is almost 3 hours per cross-validation fold.)
+Multiplied by 31 studied protein functions, it adds up to a month of computation time.
+For this reason, the computations were run in parallel 
+using the MetaCentrum/CERIT-SC computational facilities.
+The intermediate results produced by TreeLiker in arff format are bzip2 compressed
+and since they are text files the compression rate is very high. 
+Without compression, the size of the entire working directory
+would exceed the CERIT-SC (zuphux front-end machine) 104GiB disc quota.
+When the propositionalization is finished,
+the SVM classifiers are trained for each fold
+and subsequently the correcting Bayesian networks are produced.
+Then, evaluation on kept aside validation data 
+and plotted ROC curve figures are saved
+in the \texttt{results} folder.
+
 
 %*****************************************************************************
 \chapter{Experimental results}
-
+\label{ch:results}
 
 \begin{itemize}
  \item Způsob, průběh a výsledky testování.
@@ -1239,53 +1361,6 @@ as described
 
 %*****************************************************************************
 %*****************************************************************************
-\appendix
-
-\chapter{Testování zaplnění stránky a odsazení odstavců}
-\textbf{\large Tato příloha nebude součástí vaší práce. 
-Slouží pouze jako příklad formátování textu.}
-
-\section*{}
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
-Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili? Určitě existuje nějaká pěkná latinská věta, která se k tomuhle testování používá, ale co mají dělat ti, kteří se nikdy latinsky neučili?
-
 %*****************************************************************************
 \chapter{Pokyny a návody k formátování textu práce}
 \textbf{\large Tato příloha samozřejmě nebude součástí vaší práce. Slouží pouze jako příklad formátování textu.}
