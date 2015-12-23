@@ -15,10 +15,14 @@
 \usepackage{lscape}
 \usepackage{amsmath,amssymb,latexsym}
 \usepackage{epstopdf} %converting to PDF
-
+\usepackage{multicol}
 %\usepackage{float}
 \usepackage{floatflt}
-
+\usepackage{caption}
+\usepackage{tabularx}
+\newenvironment{Figure}
+  {\par\medskip\noindent\minipage{\linewidth}}
+  {\endminipage\par\medskip}
 
 %=-=-=-=-=-=-=-=-=-=-=-=--=%
 % In case of problems with PDF fonts, one may try to uncomment this line:
@@ -176,13 +180,6 @@ unicode=true,
 % oficialnim zadanim vasi prace.
 {
 \pagenumbering{roman} \cleardoublepage \thispagestyle{empty}
-\chapter*{Na tomto místě bude oficiální zadání vaší práce}
-\begin{itemize}
-\item Toto zadání je podepsané děkanem a vedoucím katedry,
-\item musíte si ho vyzvednout na studiijním oddělení Katedry počítačů na Karlově náměstí,
-\item v jedné odevzdané práci bude originál tohoto zadání (originál zůstává po obhajobě na katedře),
-\item ve druhé bude na stejném místě neověřená kopie tohoto dokumentu (tato se vám vrátí po obhajobě).
-\end{itemize}
 %\newpage
 }
 
@@ -1023,6 +1020,7 @@ we can simply make the final classification by setting:
 for each $y_i$.
 
 \section{Experimental settings and methodological remarks}
+\label{sec:method}
 In this section, the experimental setting confomation and
 methodology concerning the evaluation
 of the experimental results are discussed.
@@ -1086,7 +1084,7 @@ is performed on the validation set.
 
 % TODO: Výpočet jak moc vadí ne-stratifikace
 This approach is not perfect. 
-An noteworthy problem is that the cross-validation is not stratified,
+A noteworthy problem is that the cross-validation is not stratified,
 since the folds are the same for each function.
 The reason for this is is implementational, not principial:
 If the folds would be stratified with respect to a given 
@@ -1315,6 +1313,11 @@ would exceed the CERIT-SC (zuphux front-end machine) 104GiB disc quota.
 When the propositionalization is finished,
 the SVM classifiers are trained for each fold
 and subsequently the correcting Bayesian networks are produced.
+The source code in \texttt{dp/learn.py}
+allows easily to add and examine different types of classifiers 
+or classifiers with different parameters supported 
+by scikit-learn in the \texttt{classifiers} variable
+in \texttt{learningTest} function.
 Then, evaluation on kept aside validation data 
 and plotted ROC curve figures are saved
 in the \texttt{results} folder.
@@ -1324,20 +1327,551 @@ in the \texttt{results} folder.
 \chapter{Experimental results}
 \label{ch:results}
 
+In this chapter, 
+the performance of the classifiers in 
+general and comparison of performance on different functions
+is explored. 
+Classification results without consistency correction are compared to
+corrected results.
+The classification quality metric used here is the area under curve (AUC)
+of receiver operating characteristic (ROC).
+In summary, the results show that
+the prediction precision varies depending on the function being predicted,
+but for all functions, it preforms better than random. 
+The consistency correction however, did not improve the classification precision.
+
+First, let us have a look at the bad news: 
+Unlike in the work \cite{bnet},
+the consistency correction did not make the classification 
+any better,
+in fact it made it worse for all studied functions.
+See Figure \ref{fig:roc_corrected}, which shows a really poor ROC curves
+for the corrected classification.
+\begin{figure}[h]\begin{center}\includegraphics[width=0.5\linewidth]{figures/binding-corrected}\captionof{figure}{Results for function ``binding'' with consistency correction}\label{fig:roc_corrected}\end{center}\end{figure}
+With best AUC = 0.54 it is only slightly better than classifying at random
+and considering that the mean AUC is actually 0.49,
+the differences in AUC values on folds are possibly just random noise.
+The ROC curves for other functions after correction look similar to figure \ref{fig:roc_corrected}, although the variance is usually higher.
+The possible cause for this is the following:
+The prior probability $P(y_i)$ for a function is equal to it's ratio in the data set (see table \ref{table:terms}).
+In case $P(y_i)$ is low (lower values are for more specific functions) and $\hat{y_i}$ is positive, but not very high
+(i.e. it is classified as positive, but not with high certainty)
+it will happen, that the final classification output will be negative,
+although $\hat{y_i}$ is positive.
+(But with lower certainty expressed by $P(y_i\, | \, \hat{y_i})$ than if $\hat{y_i}$ were negative, of course.)
+In other words, the class separation precision in the SVM classifier 
+is unable to outweight the prior probability which says that ``most proteins do not belong to this specific class''.
+This information then propagates even to less specific functions in the ontology during Bayesian inference.
+The resulting output is then often ``no'' for all classes except most general ``molecular function'',
+which is indeed consistent, but useless.
+This could be potentially fixed by having the classifiers in individual functions much more precise
+or using a different theoretical framework, which would enable us to bypass the low prior probabilities.
+
+The possible important differences to the work \cite{bnet},
+where the authors claim that the consistency correction actually made the classification better,
+which could be factors to the classification quality include:
 \begin{itemize}
- \item Způsob, průběh a výsledky testování.
- \item Srovnání s existujícími řešeními, pokud jsou známy.
-\end{itemize} 
+ \item Very different input data. They used microarray gene expression data to train classifiers.
+ \item They studied a larger subset of Gene Ontology.
+ \item The used Bayesian inference algorithm is not explicitly stated in the article. It only says: ``...we can use any standard exact inference or simulation algorithm to find the most likely configuration...''
+ \item Use of bagged SVM with bootstrapping instead of single SVM with cross validation is probably not too significant, but still could alter the results.
+\end{itemize}
 
 
+The good news is that without the correction, the classifiers gave a good results
+for many specific functions. 
+For more general functions, the classification is less precise.
+Consider for example the results on figures \ref{fig:roc_zinc_ion_binding} (zinc ion binding),
+\ref{fig:roc_ion_binding} (ion binding) and \ref{fig:roc_binding} (binding).
+The more specific, the more precise.
+That is understandable:
+RelF can find a structural pattern in the protein that is captures a certain chemical configuration
+that would be responsible for binding a zinc ion.
+But a general binding site can be of much varying configurations and would have to be described 
+by a disjunction of more features each of which would be relatively less frequent.
+For example, the function ``ion binding'' contains both anion and cation binding,
+which we can expect to have chemically different binding sites,
+but the classifier for ``ion binding'' has to be able to cover both cases.
+This results in the precision being generally lesser for less specific functions.
+An example of exception to this rule is the ``catalytic activity'' function (Figure \ref{fig:roc_catalytic_activity})
+which is actually one of the best classifying,
+but both ``hydrolase activity'' (Figure \ref{fig:roc_hydrolase_activity}) and ``transferase activity''
+(Figure \ref{fig:roc_transferase_activity}) 
+are more specific and yet classified with worse precision.
+The possible cause for that is that these specific functions simply have too small number of positive examples in the data set,
+while ``hydrolase activity'' contains significantly more positive examples than their union.
+
+For the DNA-binding function, we can compare the results here to the results in \cite{szabova},
+where similar method was used.
+For SVM with RBF kernel, the result on 10-fold stratified cross validation was 0.83,
+but for the best-performing classifier (logistic regression) it was 0.88.
+Here, the best result in 8-fold cross validation for RBF SVM is 0.77,
+which is significantly worse. 
+This is possibly due to the more careful construction
+of the data set in \cite{szabova}: 
+The data set was constructed deliberately with the single studied function in mind 
+and included only proteins in certain conformation while also
+focusing on so-called zinc-finger proteins which have a specific DNA-binding mechanism.
+
+Note, how some of the figures (for example Figure \ref{fig:roc_purine_nucleoside_binding})
+show exceptionally good ROC curve for one fold.
+That unfortunately does not mean the classifier trained on this fold
+is almost perfect, but that the train set in that fold does not contain 
+enough positive examples,
+because the cross-validation could not be stratified as described in the methodology section \ref{sec:method}.
+For this reason, it would be reasonable here to take the mean or median AUC of 
+the folds as a metric of the classifier's quality.
+
+\section{Classifier performance plots}
+In the following figures,
+we can see in detail how the proposed method actually worked for each of the studied functions.
+\begin{multicols}{2}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_catalytic_activity}\captionof{figure}{Results for catalytic activity}\label{fig:roc_catalytic_activity}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_binding}\captionof{figure}{Results for binding}\label{fig:roc_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_protein_binding}\captionof{figure}{Results for protein binding}\label{fig:roc_protein_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_transferase_activity}\captionof{figure}{Results for transferase activity}\label{fig:roc_transferase_activity}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_hydrolase_activity}\captionof{figure}{Results for hydrolase activity}\label{fig:roc_hydrolase_activity}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_small_molecule_binding}\captionof{figure}{Results for small molecule binding}\label{fig:roc_small_molecule_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_ion_binding}\captionof{figure}{Results for ion binding}\label{fig:roc_ion_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_organic_cyclic_compound_binding}\captionof{figure}{Results for organic cyclic compound binding}\label{fig:roc_organic_cyclic_compound_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_carbohydrate_derivative_binding}\captionof{figure}{Results for carbohydrate derivative binding}\label{fig:roc_carbohydrate_derivative_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_heterocyclic_compound_binding}\captionof{figure}{Results for heterocyclic compound binding}\label{fig:roc_heterocyclic_compound_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_nucleoside_binding}\captionof{figure}{Results for nucleoside binding}\label{fig:roc_nucleoside_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_nucleic_acid_binding}\captionof{figure}{Results for nucleic acid binding}\label{fig:roc_nucleic_acid_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_receptor_binding}\captionof{figure}{Results for receptor binding}\label{fig:roc_receptor_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_anion_binding}\captionof{figure}{Results for anion binding}\label{fig:roc_anion_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_cation_binding}\captionof{figure}{Results for cation binding}\label{fig:roc_cation_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_nucleoside_phosphate_binding}\captionof{figure}{Results for nucleoside phosphate binding}\label{fig:roc_nucleoside_phosphate_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_nucleotide_binding}\captionof{figure}{Results for nucleotide binding}\label{fig:roc_nucleotide_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_purine_nucleoside_binding}\captionof{figure}{Results for purine nucleoside binding}\label{fig:roc_purine_nucleoside_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_DNA_binding}\captionof{figure}{Results for DNA binding}\label{fig:roc_DNA_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_RNA_binding}\captionof{figure}{Results for RNA binding}\label{fig:roc_RNA_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_ribonucleoside_binding}\captionof{figure}{Results for ribonucleoside binding}\label{fig:roc_ribonucleoside_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_purine_ribonucleoside_triphosphate_binding}\captionof{figure}{Results for purine ribonucleoside triphosphate binding}\label{fig:roc_purine_ribonucleoside_triphosphate_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_metal_ion_binding}\captionof{figure}{Results for metal ion binding}\label{fig:roc_metal_ion_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_purine_nucleotide_binding}\captionof{figure}{Results for purine nucleotide binding}\label{fig:roc_purine_nucleotide_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_purine_ribonucleoside_binding}\captionof{figure}{Results for purine ribonucleoside binding}\label{fig:roc_purine_ribonucleoside_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_ribonucleotide_binding}\captionof{figure}{Results for ribonucleotide binding}\label{fig:roc_ribonucleotide_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_transition_metal_ion_binding}\captionof{figure}{Results for transition metal ion binding}\label{fig:roc_transition_metal_ion_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_zinc_ion_binding}\captionof{figure}{Results for zinc ion binding}\label{fig:roc_zinc_ion_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_adenyl_nucleotide_binding}\captionof{figure}{Results for adenyl nucleotide binding}\label{fig:roc_adenyl_nucleotide_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_purine_ribonucleotide_binding}\captionof{figure}{Results for purine ribonucleotide binding}\label{fig:roc_purine_ribonucleotide_binding}\end{center}\end{Figure}
+\begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_adenyl_ribonucleotide_binding}\captionof{figure}{Results for adenyl ribonucleotide binding}\label{fig:roc_adenyl_ribonucleotide_binding}\end{center}\end{Figure}
+\end{multicols}
+
+\section{Discovered structural patterns}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+8 & Dist(A, B, 14),  Type(A, gly), Type(B, ile), SecStr(B, $3_{10}$-helix)\\ \hline 
+7 & Dist(A, B, 14), Polar(C, yes),  Type(A, gly), Type(B, C), SecStr(A, $3_{10}$-helix), \newline SecStr(B, bend)\\ \hline 
+7 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, lys), SecStr(A, $\alpha$-helix), SecStr(C, $3_{10}$-helix)\\ \hline 
+5 & Dist(A, B, 14), Polar(C, yes),  Type(A, met), Type(B, C), SecStr(A, bend), \newline SecStr(B, $3_{10}$-helix)\\ \hline 
+5 & Dist(A, B, 10),  Type(A, pro), Type(B, lys)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, his), Type(B, gly), SecStr(A, $\beta$-strand), SecStr(B, bend)\\ \hline 
+3 & Charge(D, -), Dist(A, B, 14), Polar(C, no),  Type(A, D), Type(B, C), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14),  Type(B, phe), SecStr(A, turn), SecStr(B, $\beta$-bridge)\\ \hline 
+2 & Dist(A, B, 14),  Type(B, lys), SecStr(A, $\alpha$-helix), SecStr(B, $3_{10}$-helix)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, no),  Type(B, asp), Type(C, D), \newline SecStr(A, turn)\\ \hline 
+2 & Charge(C, +), Dist(A, B, 10),  Type(B, C), SecStr(A, bend)\\ \hline 
+2 & Charge(B, -), Dist(A, C, 14), Polar(D, no),  Type(A, B), Type(C, D), SecStr(A, turn), SecStr(C, $\beta$-strand)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for catalytic activity}\label{tab:catalytic_activity}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, his), Type(B, arg), SecStr(A, $\beta$-strand), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, gln), Type(B, arg), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, his), Type(B, arg), SecStr(A, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, ala), Type(B, ala), SecStr(A, $\beta$-strand), SecStr(B, $\beta$-strand)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, tyr), Type(B, ala), SecStr(B, $\beta$-strand)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, lys), Type(B, val), SecStr(A, turn)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, lys), Type(B, asp), SecStr(A, $3_{10}$-helix)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, ala), Type(B, trp), SecStr(A, $\alpha$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 14),  Type(A, tyr), Type(B, C), SecStr(A, $\alpha$-helix), \newline SecStr(B, turn)\\ \hline 
+2 & Dist(A, C, 14), Dist(A, D, 14), Polar(B, no),  Type(A, B), Type(C, phe), \newline SecStr(A, bend), SecStr(D, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, thr), Type(B, gln), SecStr(A, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, phe), Type(B, leu), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, asp), Type(B, ile), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, arg), Type(B, trp), SecStr(A, $\beta$-strand), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, ala), Type(B, trp), SecStr(B, $\alpha$-helix)\\ \hline 
+2 & Dist(A, B, 14), Polar(C, yes),  Type(A, tyr), Type(B, C), SecStr(A, $\beta$-bridge)\\ \hline 
+2 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, met), \newline SecStr(C, $\beta$-strand)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for binding}\label{tab:binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+4 & Charge(D, 0), Charge(E, 0), Dist(A, B, 14), Dist(A, C, 14),  Type(A, E), \newline Type(B, leu), Type(C, D), SecStr(A, $\alpha$-helix), SecStr(C, $\alpha$-helix)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, leu), Type(B, leu), SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(B, 0), Dist(A, C, 14),  Type(A, B), Type(C, leu), SecStr(A, $\alpha$-helix)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, ala), Type(B, lys), SecStr(A, $\alpha$-helix)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, no),  Type(B, C), Type(D, leu), \newline SecStr(B, $\alpha$-helix)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14),  Type(A, C), Type(B, leu), SecStr(A, $\alpha$-helix)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(E, yes),  Type(A, leu), \newline Type(B, C), Type(D, E), SecStr(A, $\alpha$-helix)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for protein binding}\label{tab:protein_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, ser), Type(B, ile), SecStr(A, bend), SecStr(B, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, cys), SecStr(A, $\beta$-strand), SecStr(B, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, no), Polar(E, yes),  Type(A, ala), \newline Type(B, C), Type(D, E), SecStr(D, turn)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, gly), Type(B, trp), SecStr(A, $3_{10}$-helix), SecStr(B, $3_{10}$-helix)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, gln), Type(C, gly), SecStr(C, turn)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes), Polar(E, no),  Type(A, ala), \newline Type(B, C), Type(D, E), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, gly), Type(C, gln), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(C, D), SecStr(A, $\beta$-strand), \newline SecStr(B, turn), SecStr(C, $\beta$-strand)\\ \hline 
+2 & Charge(F, 0), Dist(A, B, 14), Dist(A, C, 14), Dist(A, E, 14), Polar(D, yes),  \newline Type(B, gly), Type(C, D), Type(E, F), SecStr(C, turn), SecStr(E, turn)\\ \hline 
+2 & Charge(B, -), Dist(A, C, 14), Dist(A, E, 14), Polar(D, yes),  Type(A, B), Type(C, D), Type(E, gly), SecStr(E, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for transferase activity}\label{tab:transferase_activity}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Charge(C, +), Dist(A, B, 14),  Type(A, ser), Type(B, C), SecStr(A, turn), \newline SecStr(B, $3_{10}$-helix)\\ \hline 
+6 & Dist(A, B, 14),  Type(A, arg), Type(B, trp), SecStr(B, $\beta$-bridge)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, his), Type(B, gly), SecStr(A, bend)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, gln), Type(B, arg), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14), Polar(C, no),  Type(A, asn), Type(B, C), SecStr(A, turn), \newline SecStr(B, turn)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, ala), Type(C, pro)\\ \hline 
+3 & Charge(E, -), Dist(A, B, 14), Dist(A, D, 14), Polar(C, no),  Type(A, gly), \newline Type(B, C), Type(D, E), SecStr(A, $\alpha$-helix)\\ \hline 
+3 & Charge(B, -), Dist(A, C, 14),  Type(A, B), Type(C, glu), SecStr(A, bend), \newline SecStr(C, $3_{10}$-helix)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, pro), Type(C, ala)\\ \hline 
+2 & Charge(E, 0), Charge(F, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, no), \newline Polar(E, yes),  Type(A, F), Type(B, C), Type(D, E), SecStr(A, $\alpha$-helix)\\ \hline 
+2 & Charge(C, 0), Charge(E, +), Dist(A, B, 14), Dist(A, D, 14),  Type(A, gly), \newline Type(B, C), Type(D, E), SecStr(A, $3_{10}$-helix)\\ \hline 
+2 & Charge(C, -), Charge(F, 0), Dist(A, B, 14), Dist(A, E, 14), Polar(D, yes),  \newline Type(A, D), Type(B, C), Type(E, F), SecStr(A, $\alpha$-helix)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for hydrolase activity}\label{tab:hydrolase_activity}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(B, met), SecStr(A, $\beta$-strand), SecStr(B, $3_{10}$-helix)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, val), Type(B, ala), SecStr(A, $\alpha$-helix), SecStr(B, bend)\\ \hline 
+5 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(C, D), SecStr(A, $\beta$-strand), \newline SecStr(B, turn), SecStr(C, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, ser), Type(B, phe), SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, phe), Type(B, leu), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Charge(C, +), Dist(A, B, 14), Dist(A, D, 14), Polar(E, no),  Type(B, C), \newline Type(D, E), SecStr(B, turn), SecStr(D, turn)\\ \hline 
+4 & Charge(C, +), Charge(E, -), Dist(A, B, 14), Dist(A, D, 12),  Type(B, C), Type(D, E)\\ \hline 
+3 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, leu), SecStr(A, $\beta$-strand), \newline SecStr(B, $\beta$-bridge)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes), Polar(E, no),  \newline Type(B, C), Type(D, E), SecStr(A, $\beta$-strand), SecStr(D, turn)\\ \hline 
+3 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, leu), SecStr(A, $\beta$-strand), \newline SecStr(C, $\beta$-bridge)\\ \hline 
+2 & Charge(E, +), Dist(A, B, 14), Dist(A, D, 14), Polar(C, no),  Type(B, C), \newline Type(D, E), SecStr(B, turn), SecStr(D, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for small molecule binding}\label{tab:small_molecule_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Dist(A, B, 14), Polar(C, yes),  Type(A, gln), Type(B, C), SecStr(A, $3_{10}$-helix), \newline SecStr(B, $\alpha$-helix)\\ \hline 
+6 & Dist(A, B, 14),  Type(A, lys), Type(B, gln), SecStr(A, $\alpha$-helix), SecStr(B, bend)\\ \hline 
+6 & Dist(A, B, 14),  Type(A, gly), Type(B, asn), SecStr(A, bend), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, his), SecStr(A, $3_{10}$-helix), \newline SecStr(B, $\alpha$-helix)\\ \hline 
+4 & Dist(A, C, 14), Polar(B, no),  Type(A, B), Type(C, ser), SecStr(A, $\alpha$-helix), \newline SecStr(C, bend)\\ \hline 
+3 & Dist(A, B, 14), Polar(C, no),  Type(A, arg), Type(B, C), SecStr(A, $\alpha$-helix), \newline SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, his), SecStr(A, $3_{10}$-helix), \newline SecStr(C, $\alpha$-helix)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, leu), Type(B, cys), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, glu), Type(B, arg), SecStr(A, $\beta$-bridge)\\ \hline 
+2 & Dist(A, B, 14), Polar(C, no),  Type(A, C), Type(B, ser), SecStr(A, $\alpha$-helix), \newline SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14), Polar(C, no),  Type(A, C), Type(B, ile), SecStr(B, $\beta$-bridge)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for ion binding}\label{tab:ion_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+8 & Dist(A, B, 14),  Type(A, tyr), Type(B, met), SecStr(A, bend)\\ \hline 
+6 & Dist(A, B, 14), Dist(A, C, 14),  Type(A, gly), Type(B, phe), SecStr(A, bend), \newline SecStr(C, $3_{10}$-helix)\\ \hline 
+6 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, gln), Type(B, C), \newline SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, gly), Type(B, phe), SecStr(A, bend), SecStr(B, $3_{10}$-helix)\\ \hline 
+5 & Charge(B, 0), Dist(A, C, 12), Polar(B, yes),   Type(A, B), SecStr(A, bend)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, gln), Type(B, his), SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 12),   Type(A, arg), Type(B, C)\\ \hline 
+3 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, leu), SecStr(A, $3_{10}$-helix)\\ \hline 
+2 & Dist(A, B, 14), Polar(C, no),  Type(A, val), Type(B, C), SecStr(A, $\beta$-strand), \newline SecStr(B, $\beta$-bridge)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, C), Type(D, arg), \newline SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 12), Polar(C, no), Polar(E, yes),   Type(A, E), Type(B, C), SecStr(A, bend)\\ \hline 
+2 & Charge(D, 0), Dist(A, C, 12), Dist(A, E, 14), Polar(B, yes),   Type(A, B), \newline Type(C, D), SecStr(A, bend)\\ \hline 
+2 & Charge(C, 0), Charge(E, 0), Dist(A, B, 14), Dist(A, D, 12), Polar(F, yes),  \newline Type(A, F), Type(B, C), Type(D, E), SecStr(A, bend)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for organic cyclic compound binding}\label{tab:organic_cyclic_compound_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Charge(C, +), Dist(A, B, 14), Dist(A, D, 14), Polar(E, no),  Type(B, C), \newline Type(D, E), SecStr(B, turn), SecStr(D, turn)\\ \hline 
+4 & Dist(A, B, 8),  Type(B, val), SecStr(A, bend), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+3 & Dist(A, C, 10), Polar(B, no),  Type(A, B), Type(C, thr), SecStr(A, bend)\\ \hline 
+3 & Charge(C, 0), Charge(D, 0), Dist(A, B, 14), Polar(D, yes),  Type(A, D), Type(B, C), SecStr(A, $\beta$-strand), SecStr(B, turn)\\ \hline 
+3 & Charge(C, -), Dist(A, B, 14),  Type(A, C), SecStr(A, $\beta$-strand), SecStr(B, $\beta$-bridge)\\ \hline 
+3 & Charge(B, 0), Charge(D, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, D), SecStr(A, $\beta$-strand), SecStr(C, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, thr), Type(B, thr), SecStr(A, $\beta$-strand), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Dist(A, D, 14),  Type(D, lys), SecStr(A, bend),  \newline SecStr(B, turn), SecStr(C, bend)\\ \hline 
+2 & Charge(E, +), Dist(A, B, 14), Dist(A, D, 14), Polar(C, no),  Type(B, C),  \newline Type(D, E), SecStr(B, turn), SecStr(D, turn)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Dist(A, E, 14), Polar(C, yes), Polar(D, no), \newline Polar(F, no),  Type(A, D), Type(B, C), Type(E, F), SecStr(A, $\beta$-strand), SecStr(E, turn)\\ \hline 
+2 & Charge(B, -), Dist(A, C, 14),  Type(A, B), SecStr(A, $\beta$-strand), SecStr(C, $\beta$-bridge)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for carbohydrate derivative binding}\label{tab:carbohydrate_derivative_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+8 & Dist(A, B, 14),  Type(A, tyr), Type(B, met), SecStr(A, bend)\\ \hline 
+7 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, gln), Type(B, C), \newline SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, gly), Type(B, phe), SecStr(A, bend), SecStr(B, $3_{10}$-helix)\\ \hline 
+4 & Dist(A, B, 14), Polar(C, no),  Type(A, val), Type(B, C), SecStr(A, $\beta$-strand), \newline SecStr(B, $\beta$-bridge)\\ \hline 
+4 & Dist(A, B, 14), Dist(A, C, 14),  Type(A, gly), Type(B, phe), SecStr(A, bend), \newline SecStr(C, $3_{10}$-helix)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, gln), Type(B, his), SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(D, 0), Dist(A, B, 12), Dist(A, C, 14),   Type(A, arg), Type(C, D)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 12), Polar(C, yes),   Type(A, C), SecStr(A, bend)\\ \hline 
+3 & Charge(B, 0), Dist(A, C, 12), Polar(B, yes),   Type(A, B), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14),  Type(A, gly), Type(C, phe), SecStr(A, bend), \newline SecStr(B, $3_{10}$-helix)\\ \hline 
+2 & Dist(A, B, 12), Dist(A, C, 14), Polar(D, no), Polar(E, yes),   Type(A, E), Type(C, D), SecStr(A, bend)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 12), Dist(A, E, 14), Polar(D, yes),   Type(A, D), \newline Type(B, C), SecStr(A, bend)\\ \hline 
+2 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, leu), SecStr(A, $3_{10}$-helix)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for heterocyclic compound binding}\label{tab:heterocyclic_compound_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met),  \newline Type(C, D)\\ \hline 
+3 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+3 & Charge(D, +), Dist(A, C, 14), Dist(A, E, 14), Polar(B, no), Polar(F, no),  \newline Type(A, B), Type(C, D), Type(E, F), SecStr(C, turn), SecStr(E, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, phe), Type(B, leu), SecStr(A, $3_{10}$-helix), SecStr(B, $3_{10}$-helix)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C), \newline Type(D, met)\\ \hline 
+2 & Charge(E, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, no), Polar(E, yes), \newline Polar(F, no),  Type(A, F), Type(B, C), Type(D, E), SecStr(A, $\beta$-strand), \newline SecStr(B, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for nucleoside binding}\label{tab:nucleoside_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, gln), Type(B, C), \newline SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+6 & Charge(C, +), Dist(A, B, 14),  Type(A, arg), Type(B, C), SecStr(A, $\alpha$-helix), \newline SecStr(B, bend)\\ \hline 
+4 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 12),   Type(A, arg), Type(B, C)\\ \hline 
+3 & Charge(C, +), Dist(A, B, 14),  Type(A, ile), Type(B, C), SecStr(A, bend), \newline SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 14),  Type(A, gln), Type(B, C), SecStr(B, bend)\\ \hline 
+3 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, his), \newline SecStr(C, $3_{10}$-helix)\\ \hline 
+2 & Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, lys), SecStr(A, $\beta$-strand), \newline SecStr(C, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, glu), Type(B, pro), SecStr(A, bend), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14), Polar(C, no),  Type(A, C), Type(B, asn), SecStr(A, $\beta$-bridge), \newline SecStr(B, $\beta$-strand)\\ \hline 
+2 & Charge(D, 0), Dist(A, B, 12), Dist(A, C, 14),   Type(A, arg), Type(C, D)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for nucleic acid binding}\label{tab:nucleic_acid_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Dist(A, B, 14), Polar(C, yes),  Type(A, asn), Type(B, C), SecStr(A, turn), \newline SecStr(B, $\beta$-strand)\\ \hline 
+6 & Dist(A, B, 14),  Type(A, lys), Type(B, leu), SecStr(A, turn), SecStr(B, $\beta$-bridge)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, pro), Type(B, glu)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, asp), Type(B, thr), SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, tyr), SecStr(A, $\beta$-bridge), SecStr(B, $\alpha$-helix)\\ \hline 
+4 & Charge(B, 0), Charge(D, 0), Dist(A, C, 10), Polar(B, yes), Polar(D, yes),  \newline Type(A, B), Type(C, D), SecStr(A, bend)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14),  Type(C, ala), SecStr(B, bend), SecStr(C, $\alpha$-helix)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, gln), Type(C, lys), SecStr(B, bend)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, ala), SecStr(B, $\alpha$-helix), SecStr(C, bend)\\ \hline 
+3 & Charge(E, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes), Polar(E, yes),  \newline Type(B, C), Type(D, E), SecStr(A, bend), SecStr(B, bend), SecStr(D, turn)\\ \hline 
+2 & Dist(A, B, 8),  Type(A, ser), Type(B, gly), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, C), Type(B, asn), \newline Type(D, glu)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, lys), Type(C, gln), SecStr(C, bend)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Dist(A, E, 14), Polar(D, no),  Type(B, ile), \newline Type(C, D), Type(E, ala), SecStr(C, $\beta$-bridge)\\ \hline 
+2 & Dist(A, B, 10),  Type(A, lys), Type(B, gly)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes), Polar(E, no),  \newline Type(B, C), Type(D, E), SecStr(A, bend), SecStr(B, turn)\\ \hline 
+2 & Charge(C, 0), Charge(D, 0), Dist(A, B, 10), Polar(C, yes), Polar(D, yes),  \newline Type(A, D), Type(B, C), SecStr(A, bend)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for receptor binding}\label{tab:receptor_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(C, D), SecStr(A, $\beta$-strand), \newline SecStr(B, turn), SecStr(C, $\beta$-strand)\\ \hline 
+4 & Charge(E, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, no), Polar(E, yes),  \newline Type(B, C), Type(D, E), SecStr(A, $\beta$-strand), SecStr(B, turn)\\ \hline 
+4 & Charge(C, 0), Charge(D, 0), Dist(A, B, 14), Polar(D, yes),  Type(A, D), Type(B, C), SecStr(A, $\beta$-strand), SecStr(B, turn)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, thr), Type(B, ser), SecStr(A, turn), SecStr(B, $3_{10}$-helix)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, ile), Type(B, his), SecStr(A, $\beta$-bridge), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+2 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, tyr), SecStr(A, $\alpha$-helix),  \newline SecStr(B, $\beta$-strand)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes), Polar(E, no),  \newline Type(B, C), Type(D, E), SecStr(A, $\beta$-strand), SecStr(D, turn)\\ \hline 
+2 & Charge(B, 0), Charge(D, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, D), SecStr(A, $\beta$-strand), SecStr(C, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for anion binding}\label{tab:anion_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, gln), Type(B, C), \newline  SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, ile), SecStr(A, $\beta$-bridge), \newline SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, tyr), Type(B, cys), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, phe), Type(B, tyr), SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, phe), Type(B, cys), SecStr(A, bend), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, E, 14), Polar(C, yes), Polar(D, no),  Type(A, D), Type(B, C), Type(E, gly), SecStr(A, $\alpha$-helix), SecStr(E, turn)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, thr), Type(B, C), \newline SecStr(A, bend), SecStr(B, turn)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, cys), \newline SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, asp), Type(B, C), \newline SecStr(B, turn)\\ \hline 
+2 & Charge(C, -), Dist(A, B, 14),  Type(A, C), Type(B, ala), SecStr(A, turn), \newline SecStr(B, $\alpha$-helix)\\ \hline 
+2 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, asn), SecStr(A, $3_{10}$-helix), \newline SecStr(C, turn)\\ \hline 
+2 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, cys), \newline SecStr(A, $\alpha$-helix), SecStr(C, $\beta$-strand)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for cation binding}\label{tab:cation_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, ser), Type(B, phe), SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, phe), Type(B, leu), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, gly), Type(B, tyr), SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, leu), SecStr(A, $\beta$-strand), \newline SecStr(B, $\beta$-bridge)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14),  Type(A, leu), Type(B, C), \newline Type(D, glu)\\ \hline 
+3 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, leu), SecStr(A, $\beta$-strand), \newline SecStr(C, $\beta$-bridge)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, no),  Type(B, lys), Type(C, D), \newline SecStr(B, turn), SecStr(C, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for nucleoside phosphate binding}\label{tab:nucleoside_phosphate_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, ser), Type(B, phe), SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, phe), Type(B, leu), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, gly), Type(B, tyr), SecStr(B, $\alpha$-helix)\\ \hline 
+3 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, leu), SecStr(A, $\beta$-strand), \newline SecStr(B, $\beta$-bridge)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14),  Type(A, leu), Type(B, C), \newline Type(D, glu)\\ \hline 
+3 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, leu), SecStr(A, $\beta$-strand), \newline SecStr(C, $\beta$-bridge)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, no),  Type(B, lys), Type(C, D), \newline SecStr(B, turn), SecStr(C, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for nucleotide binding}\label{tab:nucleotide_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+4 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, ile), Type(B, ser), SecStr(A, $\beta$-bridge), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, cys), Type(B, glu), SecStr(A, $\beta$-bridge), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, ala), Type(B, val), SecStr(A, $3_{10}$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14),   Type(A, cys), SecStr(A, $\beta$-bridge)\\ \hline 
+2 & Charge(F, 0), Dist(A, C, 14), Dist(A, E, 14), Polar(B, no), Polar(D, no), \newline Polar(F, yes),  Type(A, B), Type(C, D), Type(E, F), SecStr(A, $\beta$-strand), \newline SecStr(C, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for purine nucleoside binding}\label{tab:purine_nucleoside_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Dist(A, B, 14),  Type(A, glu), Type(B, pro), SecStr(A, bend), SecStr(B, bend)\\ \hline 
+6 & Dist(A, B, 14), Polar(C, no),  Type(A, glu), Type(B, C), SecStr(A, bend), \newline SecStr(B, bend)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, tyr), Type(B, his), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 14), Polar(C, no),  Type(A, met), Type(B, C), SecStr(B, bend)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, pro), SecStr(A, $\beta$-bridge), SecStr(B, $\beta$-bridge)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, no),  Type(B, thr), Type(C, D), \newline SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(B, cys), SecStr(A, $\alpha$-helix), SecStr(B, bend)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14),  Type(A, gln), Type(B, C), SecStr(B, bend)\\ \hline 
+2 & Charge(B, 0), Charge(H, 0), Dist(A, C, 14), Dist(A, E, 14), Dist(A, G, 14), \newline Polar(D, no), Polar(F, yes),  Type(A, B), Type(C, D), Type(E, F), Type(G, H), \newline SecStr(A, turn), SecStr(G, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for DNA binding}\label{tab:DNA_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+8 & Charge(C, +), Dist(A, B, 14),  Type(A, ile), Type(B, C), SecStr(A, bend), \newline SecStr(B, $\alpha$-helix)\\ \hline 
+7 & Charge(C, 0), Dist(A, B, 14),  Type(A, his), Type(B, C), SecStr(B, $3_{10}$-helix)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, asp), Type(B, phe), SecStr(A, $3_{10}$-helix), SecStr(B, turn)\\ \hline 
+4 & Dist(A, B, 14), Polar(C, no),  Type(A, lys), Type(B, C), SecStr(A, $3_{10}$-helix), \newline SecStr(B, $\beta$-strand)\\ \hline 
+4 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, his), \newline SecStr(B, $3_{10}$-helix)\\ \hline 
+4 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, his), \newline SecStr(C, $3_{10}$-helix)\\ \hline 
+3 & Dist(A, B, 14), Polar(C, yes),  Type(A, pro), Type(B, C), SecStr(B, $3_{10}$-helix)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, no), Polar(E, no),  Type(A, C), Type(B, ser), Type(D, E)\\ \hline 
+3 & Charge(D, +), Dist(A, B, 8), Polar(C, no),  Type(A, D), Type(B, C), SecStr(A, bend)\\ \hline 
+3 & Charge(B, +), Dist(A, C, 8), Polar(D, no),  Type(A, B), Type(C, D), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 8),  Type(A, gly), Type(B, pro), SecStr(B, turn)\\ \hline 
+2 & Charge(D, 0), Dist(A, B, 14), Dist(A, C, 12),  Type(C, D), SecStr(A, turn), \newline SecStr(B, turn), SecStr(C, turn)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14),  Type(A, C), Type(B, ser), \newline Type(D, leu)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 12), Dist(A, D, 14),  Type(B, C), SecStr(A, turn), \newline SecStr(B, turn), SecStr(D, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for RNA binding}\label{tab:RNA_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+6 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+3 & Dist(A, C, 10), Polar(B, no),  Type(A, B), Type(C, thr), SecStr(A, bend)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C), \newline Type(D, met)\\ \hline 
+2 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+2 & Charge(F, 0), Dist(A, B, 14), Dist(A, E, 14), Polar(C, no), Polar(D, no), \newline Polar(F, yes),  Type(A, D), Type(B, C), Type(E, F), SecStr(A, $\beta$-strand), \newline SecStr(B, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for ribonucleoside binding}\label{tab:ribonucleoside_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+6 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+3 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+3 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 8), Polar(C, yes),  Type(A, C), Type(B, ala)\\ \hline 
+2 & Dist(A, C, 10), Polar(B, no),  Type(A, B), Type(C, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, thr), Type(B, trp), SecStr(A, $\beta$-strand), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C), \newline Type(D, met)\\ \hline 
+2 & Charge(C, +), Dist(A, B, 14),  Type(A, thr), Type(B, C), SecStr(B, bend)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for purine ribonucleoside triphosphate binding}\label{tab:purine_ribonucleoside_triphosphate_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, gln), Type(B, C), \newline SecStr(A, $3_{10}$-helix), SecStr(B, $\alpha$-helix)\\ \hline 
+5 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, cys), \newline SecStr(A, $\alpha$-helix), SecStr(C, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, phe), Type(B, tyr), SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, phe), Type(B, cys), SecStr(A, bend), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, his), SecStr(A, turn), \newline SecStr(B, $\beta$-strand)\\ \hline 
+2 & Charge(E, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, asp), \newline Type(B, C), Type(D, E), SecStr(D, turn)\\ \hline 
+2 & Charge(E, 0), Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, E), \newline Type(B, gly), Type(C, D), SecStr(B, turn), SecStr(C, $\alpha$-helix)\\ \hline 
+2 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, ile), SecStr(A, $\beta$-bridge), \newline SecStr(B, bend)\\ \hline 
+2 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, asn), SecStr(A, $3_{10}$-helix), \newline SecStr(B, turn)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, thr), Type(B, C), \newline SecStr(A, bend), SecStr(B, turn)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Dist(A, D, 14), Polar(E, yes),  Type(A, asp), \newline Type(B, C), Type(D, E), SecStr(B, turn)\\ \hline 
+2 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, asn), SecStr(A, $3_{10}$-helix), \newline SecStr(C, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for metal ion binding}\label{tab:metal_ion_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+3 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+2 & Dist(A, B, 14),  SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, thr), Type(B, phe), SecStr(A, $\beta$-strand), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C), \newline Type(D, met)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 8), Polar(C, yes),  Type(B, C), SecStr(A, $\beta$-strand), \newline SecStr(B, $\beta$-strand)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for purine nucleotide binding}\label{tab:purine_nucleotide_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+3 & Charge(F, 0), Dist(A, C, 14), Dist(A, E, 14), Polar(B, no), Polar(D, no), \newline Polar(F, yes),  Type(A, B), Type(C, D), Type(E, F), SecStr(A, $\beta$-strand), \newline SecStr(C, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, cys), SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, cys), Type(B, glu), SecStr(A, $3_{10}$-helix), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C), \newline Type(D, met)\\ \hline 
+2 & Charge(D, 0), Dist(A, B, 14), Dist(A, C, 14),  Type(C, D), SecStr(A, $\beta$-bridge), \newline SecStr(B, bend)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for purine ribonucleoside binding}\label{tab:purine_ribonucleoside_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, no),  Type(B, C), Type(D, lys), \newline SecStr(B, turn), SecStr(D, turn)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+3 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, C, 10), Polar(B, no),  Type(A, B), Type(C, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C),  \newline Type(D, met)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, no),  Type(B, lys), Type(C, D), \newline SecStr(B, turn), SecStr(C, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for ribonucleotide binding}\label{tab:ribonucleotide_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+6 & Dist(A, B, 14),  Type(A, tyr), Type(B, cys), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+6 & Dist(A, B, 14),  Type(A, phe), Type(B, cys), SecStr(A, bend), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(B, cys), SecStr(A, $\beta$-strand), SecStr(B, $\beta$-bridge)\\ \hline 
+5 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, cys), \newline SecStr(A, $\alpha$-helix), SecStr(C, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, asp), Type(B, thr)\\ \hline 
+4 & Dist(A, B, 14), Polar(C, yes),  Type(A, gln), Type(B, C), SecStr(A, bend), \newline SecStr(B, $\beta$-bridge)\\ \hline 
+4 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, ile), SecStr(A, $\beta$-bridge), \newline SecStr(C, bend)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, glu), Type(B, cys), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+3 & Dist(A, B, 14),  Type(A, gln), Type(B, cys), SecStr(A, bend), \newline SecStr(B, $\beta$-strand)\\ \hline 
+3 & Dist(A, B, 14), Polar(C, no),  Type(A, met), Type(B, C), SecStr(A, $\beta$-bridge), SecStr(B, $\alpha$-helix)\\ \hline 
+2 & Dist(A, B, 14),  Type(B, cys), SecStr(A, $\alpha$-helix), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, pro), Type(B, met), SecStr(A, bend), SecStr(B, $\beta$-strand)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, lys), Type(B, asp), SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, asp), Type(B, val)\\ \hline 
+2 & Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, cys), SecStr(A, bend), \newline SecStr(B, bend)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14),  Type(A, tyr), Type(C, trp), SecStr(B, $\beta$-bridge)\\ \hline 
+2 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, ile), SecStr(A, $\beta$-bridge), \newline SecStr(B, bend)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, cys), \newline SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for transition metal ion binding}\label{tab:transition_metal_ion_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+7 & Dist(A, B, 14),  Type(A, tyr), Type(B, cys), SecStr(A, turn), SecStr(B, $\beta$-strand)\\ \hline 
+7 & Dist(A, B, 14),  Type(A, phe), Type(B, cys), SecStr(A, bend), SecStr(B, turn)\\ \hline 
+6 & Dist(A, B, 14),  Type(A, gln), Type(B, cys), SecStr(A, bend), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 14),  Type(B, tyr), SecStr(A, turn), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(B, cys), SecStr(A, $\alpha$-helix), SecStr(B, bend)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, phe), Type(B, lys)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, glu), Type(B, cys), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, cys), \newline SecStr(A, $\alpha$-helix), SecStr(C, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14),  Type(A, lys), Type(B, asp), SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+3 & Dist(A, B, 14), Dist(A, C, 14),  Type(A, tyr), Type(C, trp), SecStr(B, $\beta$-bridge)\\ \hline 
+3 & Charge(C, +), Dist(A, B, 14),  Type(A, C), Type(B, ile), SecStr(A, $\beta$-bridge), \newline SecStr(B, bend)\\ \hline 
+3 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, cys), \newline SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+3 & Charge(B, +), Dist(A, C, 14),  Type(A, B), Type(C, ile), SecStr(A, $\beta$-bridge), \newline SecStr(C, bend)\\ \hline 
+3 & Charge(B, 0), Dist(A, C, 14), Polar(B, yes),  Type(A, B), Type(C, val), \newline SecStr(A, $\beta$-bridge), SecStr(C, $\beta$-bridge)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14),  Type(A, tyr), Type(B, trp), SecStr(C, $\beta$-bridge)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for zinc ion binding}\label{tab:zinc_ion_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C), \newline Type(D, met)\\ \hline 
+3 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+2 &  Type(A, cys), SecStr(A, $\beta$-bridge)\\ \hline 
+2 & Dist(A, C, 10), Polar(B, no),  Type(A, B), Type(C, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, glu), Type(B, tyr), SecStr(A, $\beta$-bridge), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, asn), Type(B, ile), SecStr(A, bend), SecStr(B, turn)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, arg), Type(B, glu), SecStr(A, bend), SecStr(B, $3_{10}$-helix)\\ \hline 
+2 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+2 & Charge(F, 0), Dist(A, C, 14), Dist(A, E, 14), Polar(B, no), Polar(D, no), \newline Polar(F, yes),  Type(A, B), Type(C, D), Type(E, F), SecStr(A, $\beta$-strand), \newline SecStr(C, turn)\\ \hline 
+2 & Charge(D, 0), Dist(A, C, 14), Dist(A, E, 14), Polar(B, no), Polar(D, yes), \newline Polar(F, no),  Type(A, B), Type(C, D), Type(E, F), SecStr(A, $\beta$-strand), \newline SecStr(E, turn)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Polar(C, yes),  Type(A, C), Type(B, cys)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for adenyl nucleotide binding}\label{tab:adenyl_nucleotide_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, lys), Type(B, glu), SecStr(B, turn)\\ \hline 
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+5 & Dist(A, B, 10), Polar(C, yes),  Type(A, ala), Type(B, C), SecStr(A, $\alpha$-helix)\\ \hline 
+4 & Dist(A, B, 14), Dist(A, C, 14), Polar(D, yes),  Type(A, gly), Type(B, met), \newline Type(C, D)\\ \hline 
+3 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, C, 10), Polar(B, no),  Type(A, B), Type(C, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14),  Type(A, glu), Type(B, gly), SecStr(A, bend), SecStr(B, $\alpha$-helix)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14),  Type(A, C), SecStr(A, $\beta$-bridge), SecStr(B, bend)\\ \hline 
+2 & Charge(C, 0), Dist(A, B, 14), Dist(A, E, 14), Polar(C, yes), Polar(D, no), \newline Polar(F, no),  Type(A, D), Type(B, C), Type(E, F), SecStr(A, $\beta$-strand), \newline SecStr(E, turn)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for purine ribonucleotide binding}\label{tab:purine_ribonucleotide_binding}\end{table}
+\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+5 & Dist(A, B, 14),  Type(A, leu), Type(B, gly), SecStr(A, $\alpha$-helix), SecStr(B, $\beta$-strand)\\ \hline 
+4 & Dist(A, B, 14), Dist(A, D, 14), Polar(C, yes),  Type(A, gly), Type(B, C), \newline Type(D, met)\\ \hline 
+4 & Dist(A, B, 10), Polar(C, no),  Type(A, C), Type(B, thr), SecStr(A, bend)\\ \hline 
+2 & Dist(A, B, 14),   Type(A, cys), SecStr(A, $\beta$-bridge)\\ \hline 
+ \end{tabularx}\caption{Structural patterns for adenyl ribonucleotide binding}\label{tab:adenyl_ribonucleotide_binding}\end{table}
+
+ 
 %*****************************************************************************
 \chapter{Conclusion}
 
 \begin{itemize}
 \item Zhodnocení splnění cílů DP/BP a  vlastního přínosu práce (při formulaci je třeba vzít v potaz zadání práce).
-\item Diskuse dalšího možného pokračování práce.\end{itemize}   note={\url{http://geneontology.org/}},
-
-
+\item Diskuse dalšího možného pokračování práce.\end{itemize}   
 %*****************************************************************************
 % Seznam literatury je v samostatnem souboru reference.bib. Ten
 % upravte dle vlastnich potreb, potom zpracujte (a do textu
@@ -1359,300 +1893,6 @@ in the \texttt{results} folder.
 % kdy citace ma tvar [AutorRok] (napriklad [Cook97]). Sice to asi neni  podle ceske normy (BTW BibTeX stejne neodpovida ceske norme), ale je to nejprehlednejsi.
 % 3.5.2009 JZ polemizuje: BibTeX neobvinujte, napiste a poskytnete nam styl (.bst) splnujici citacni normu CSN/ISO.
 
-%*****************************************************************************
-%*****************************************************************************
-%*****************************************************************************
-\chapter{Pokyny a návody k formátování textu práce}
-\textbf{\large Tato příloha samozřejmě nebude součástí vaší práce. Slouží pouze jako příklad formátování textu.}
-
-Používat se dají všechny příkazy systému \LaTeX. Existuje velké množství volně přístupné dokumentace, tutoriálů, příruček a dalších materiálů v elektronické podobě. Výchozím bodem, kromě Googlu, může být stránka CSTUG (Czech Tech Users Group) \cite{CSTUG}. Tam najdete odkazy na další materiály.  Vetšinou dostačující a přehledně organizovanou elektronikou dokumentaci najdete například na \cite{latexdocweb} nebo \cite{latexwiki}.
-
-Existují i různé nadstavby nad systémy \TeX{} a \LaTeX, které výrazně usnadní psaní textu zejména začátečníkům. Velmi rozšířený v Linuxovém prostředí je systém Kile.
-
-
-\section{Vkládání obrázků}
-Obrázky se umísťují do plovoucího prostředí \verb|figure|. Každý obrázek by měl obsahovat \textbf{název} (\verb|\caption|) a \textbf{návěští} (\verb|\label|). Použití příkazu pro vložení obrázku \\\verb|\includegraphics| je podmíněno aktivací (načtením) balíku graphicx příkazem\\ \verb|\usepackage{graphicx}|.
-
-Budete-li zdrojový text zpracovávat pomocí programu \verb|pdflatex|, očekávají se obrázky s příponou \verb|*.pdf|\footnote{pdflatex umí také formáty PNG a JPG.}, použijete-li k formátování \verb|latex|, očekávají se obrázky s příponou \verb|*.eps|.\footnote{Vzájemnou konverzi mezi snad všemi typy obrazku včetně změn vekostí a dalších vymožeností vám může zajistit balík ImageMagic  (http://www.imagemagick.org/script/index.php). Je dostupný pod Linuxem, Mac OS i MS Windows. Důležité jsou zejména příkazy convert a identify.}
-
-\begin{figure}[ht]
-\begin{center}
-\includegraphics[width=5cm]{figures/LogoCVUT}
-\caption{Popiska obrázku}
-\label{fig:logo}
-\end{center}
-\end{figure}
-
-Příklad vložení obrázku:
-\begin{verbatim}
-\begin{figure}[h]
-\begin{center}
-\includegraphics[width=5cm]{figures/LogoCVUT}
-\caption{Popiska obrazku}
-\label{fig:logo}
-\end{center}
-\end{figure}
-\end{verbatim}
-
-\section{Kreslení obrázků}
-Zřejmě každý z vás má nějaký oblíbený nástroj pro tvorbu obrázků. Jde jen o to, abyste dokázali obrázek uložit v požadovaném formátu nebo jej do něj konvertovat (viz předchozí kapitola). Je zřejmě vhodné kreslit obrázky vektorově. Celkem oblíbený, na ovládání celkem jednoduchý a přitom dostatečně mocný je například program Inkscape.
-
-Zde stojí za to upozornit na kreslící programe Ipe \cite{ipe}, který dokáže do obrázku vkládat komentáře přímo v latexovském formátu (vzroce, stejné fonty atd.). Podobné věci umí na Linuxové platformě nástroj Xfig. 
-
-Za pozornost ještě stojí schopnost editoru Ipe importovat obrázek (jpg nebo bitmap) a krelit do něj latexovské popisky a komentáře. Výsledek pak umí exportovat přímo do pdf.
-
-\section{Tabulky}
-Existuje více způsobů, jak sázet tabulky. Například je možno použít prostředí \verb|table|, které je velmi podobné prostředí \verb|figure|. 
-
-\begin{table}
-\begin{center}
-\begin{tabular}{|c|l|l|}
-\hline
-\textbf{DTD} & \textbf{construction} & \textbf{elimination} \\
-\hline
-$\mid$ & \verb+in1|A|B a:sum A B+ & \verb+case([_:A]a)([_:B]a)ab:A+\\
-&\verb+in1|A|B b:sum A B+ & \verb+case([_:A]b)([_:B]b)ba:B+\\
-\hline
-$+$&\verb+do_reg:A -> reg A+&\verb+undo_reg:reg A -> A+\\
-\hline
-$*,?$& the same like $\mid$ and $+$ & the same like $\mid$ and $+$\\
-& with \verb+emtpy_el:empty+ & with \verb+emtpy_el:empty+\\
-\hline
-R(a,b) & \verb+make_R:A->B->R+ & \verb+a: R -> A+\\
- & & \verb+b: R -> B+\\
-\hline
-\end{tabular}
-\end{center}
-\caption{Ukázka tabulky}
-\label{tab:tab1}
-\end{table}
-
-Zdrojový text tabulky \ref{tab:tab1} vypadá takto:
-\begin{verbatim}
-\begin{table}
-\begin{center}
-\begin{tabular}{|c|l|l|}
-\hline
-\textbf{DTD} & \textbf{construction} & \textbf{elimination} \\
-\hline
-$\mid$ & \verb+in1|A|B a:sum A B+ & \verb+case([_:A]a)([_:B]a)ab:A+\\
-&\verb+in1|A|B b:sum A B+ & \verb+case([_:A]b)([_:B]b)ba:B+\\
-\hline
-$+$&\verb+do_reg:A -> reg A+&\verb+undo_reg:reg A -> A+\\
-\hline
-$*,?$& the same like $\mid$ and $+$ & the same like $\mid$ and $+$\\
-& with \verb+emtpy_el:empty+ & with \verb+emtpy_el:empty+\\
-\hline
-R(a,b) & \verb+make_R:A->B->R+ & \verb+a: R -> A+\\
- & & \verb+b: R -> B+\\
-\hline
-\end{tabular}
-\end{center}
-\caption{Ukázka tabulky}
-\label{tab:tab1}
-\end{table}
-\begin{table}
-\end{verbatim}
-
-\section{Odkazy v textu}
-\subsection{Odkazy na literaturu}
-Jsou realizovány příkazem \verb|\cite{odkaz}|. 
-
-Seznam literatury je dobré zapsat do samostatného souboru a ten pak zpracovat programem bibtex (viz soubor \verb|reference.bib|). Zdrojový soubor pro \verb|bibtex| vypadá například takto:
-\begin{verbatim}
-@Article{Chen01,
-  author  = "Yong-Sheng Chen and Yi-Ping Hung and Chiou-Shann Fuh",
-  title   = "Fast Block Matching Algorithm Based on 
-             the Winner-Update Strategy",
-  journal = "IEEE Transactions On Image Processing",
-  pages   = "1212--1222",
-  volume  =  10,
-  number  =   8,
-  year    = 2001,
-}
-
-@Misc{latexdocweb,
-  author  = "",
-  title   = "{\LaTeX} --- online manuál",
-  note    = "\verb|http://www.cstug.cz/latex/lm/frames.html|",
-  year    = "",
-}
-...
-\end{verbatim}
-
-%11.12.2008, 3.5.2009
-\textbf{Pozor:} Sazba názvů odkazů je dána Bib\TeX{} stylem\\ (\verb|\bibliographystyle{abbrv}|). 
-%Budete-li používat české prostředí (\verb|\usepackage[czech]{babel}|), 
-Bib\TeX{} tedy obvykle vysází velké pouze počáteční písmeno z názvu zdroje, 
-ostatní písmena zůstanou malá bez ohledu na to, jak je napíšete. 
-Přesněji řečeno, styl může zvolit pro každý typ publikace jiné konverze. 
-Pro časopisecké články třeba výše uvedené, jiné pro monografie (u nich často bývá 
-naopak velikost písmen zachována).
-
-Pokud chcete Bib\TeX u napovědět, která písmena nechat bez konverzí 
-(viz \texttt{title = "\{$\backslash$LaTeX\} -{}-{}- online manuál"} 
-v~předchozím příkladu), je nutné příslušné písmeno (zde celé makro) uzavřít 
-do složených závorek. Pro přehlednost je proto vhodné celé parametry 
-uzavírat do uvozovek (\texttt{author = "\dots"}), nikoliv do složených závorek.
-
-Odkazy na literaturu ve zdrojovém textu se pak zapisují:
-\begin{verbatim}
-Podívejte se na \cite{Chen01}, 
-další detaily najdete na \cite{latexdocweb}
-\end{verbatim}
-
-Vazbu mezi soubory \verb|*.tex| a \verb|*.bib| zajistíte příkazem 
-\verb|\bibliography{}| v souboru \verb|*.tex|.  V našem případě tedy zdrojový 
-dokument \verb|thesis.tex| obsahuje příkaz\\
-\verb|\bibliography{reference}|.
-
-Zpracování zdrojového textu s odkazy se provede postupným voláním programů\\
-\verb|pdflatex <soubor>| (případně \verb|latex <soubor>|), \verb|bibtex <soubor>| 
-a opět\\ \verb|pdflatex <soubor>|.\footnote{První volání \texttt{pdflatex} 
-vytvoří soubor s~koncovkou \texttt{*.aux}, který je vstupem pro program 
-\texttt{bibtex}, pak je potřeba znovu zavolat program \texttt{pdflatex} 
-(\texttt{latex}), který tentokrát zpracuje soubory s příponami \texttt{.aux} a 
-\texttt{.tex}. 
-Informaci o případných nevyřešených odkazech (cross-reference) vidíte přímo při 
-zpracovávání zdrojového souboru příkazem \texttt{pdflatex}. Program \texttt{pdflatex} 
-(\texttt{latex}) lze volat vícekrát, pokud stále vidíte nevyřešené závislosti.}
-
-
-Níže uvedený příklad je převzat z dříve existujících pokynů studentům, kteří 
-dělají svou diplomovou nebo bakalářskou práci v~Grafické skupině.\footnote{Několikrát 
-jsem byl upozorněn, že web s těmito pokyny byl zrušen, proto jej zde přímo necituji. 
-Nicméně příklad sám o sobě dokumentuje obecně přijímaný konsensus ohledně citací 
-v~bakalářských a diplomových pracích na KP.} Zde se praví:
-\begin{small}
-\begin{verbatim}
-...
-j) Seznam literatury a dalších použitých pramenů, odkazy na WWW stránky, ...
- Pozor na to, že na veškeré uvedené prameny se musíte v textu práce 
- odkazovat -- [1]. 
-Pramen, na který neodkazujete, vypadá, že jste ho vlastně nepotřebovali 
-a je uveden jen do počtu. Příklad citace knihy [1], článku v časopise [2], 
-stati ve sborníku [3] a html odkazu [4]: 
-[1] J. Žára, B. Beneš;, and P. Felkel. 
-     Moderní počítačová grafika. Computer Press s.r.o, Brno, 1 edition, 1998. 
-     (in Czech). 
-[2] P. Slavík. Grammars and Rewriting Systems as Models for Graphical User 
-     Interfaces. Cognitive Systems, 4(4--3):381--399, 1997. 
-[3] M. Haindl, Š. Kment, and P. Slavík. Virtual Information Systems. 
-     In WSCG'2000 -- Short communication papers, pages 22--27, Pilsen, 2000. 
-     University of West Bohemia. 
-[4] Knihovna grafické skupiny katedry počítačů: 
-     http://www.cgg.cvut.cz/Bib/library/ 
-\end{verbatim}
-\end{small}
-\ldots{} abychom výše citované odkazy skutečně našli v (automaticky generovaném) seznamu literatury tohoto textu, musíme je nyní alespoň jednou citovat: Kniha \cite{kniha}, článek v~časopisu \cite{clanek}, příspěvek na konferenci \cite{sbornik}, www odkaz \cite{www}.
-
-\subsection{Odkazy na obrázky, tabulky a kapitoly}
-\begin{itemize}
-\item Označení místa v textu, na které chcete později čtenáře práce odkázat, se provede příkazem \verb|\label{navesti}|. Lze použít v prostředích \verb|figure| a  \verb|table|, ale též za názvem kapitoly nebo podkapitoly.
-\item Na návěští se odkážeme příkazem \verb|\ref{navesti}| nebo \verb|\pageref{navesti}|.
-\end{itemize}
-
-\section{Rovnice, centrovaná, číslovaná matematika}
-Jednoduchý matematický výraz zapsaný přímo do textu se vysází pomocí prostředí \verb|math|, resp. zkrácený zápis pomocí uzavření textu rovnice mezi znaky \verb|$|.
-
-Kód \verb|$ S = \pi * r^2 $| bude vysázen takto: $ S = \pi * r^2 $.
-
-Pokud chcete nečíslované rovnice, ale umístěné centrovaně na samostatné řádky, pak lze použít prostředí \verb|displaymath|, resp. zkrácený zápis pomocí uzavření textu rovnice mezi znaky \verb|$$|. Zdrojový kód: 
-\begin{verb}
-|$$ S = \pi * r^2 $$|
-\end{verb}
-bude pak vysázen takto:
-$$ S = \pi * r^2 $$
-
-Chcete-li mít rovnice číslované, je třeba použít prostředí \verb|eqation|. Kód:
-\begin{verbatim}
-\begin{equation}
-  S = \pi * r^2
-\end{equation}
-
-\begin{equation}
-  V = \pi * r^3
-\end{equation}
-\end{verbatim}
-je potom vysázen takto:
-\begin{equation}
-  S = \pi * r^2
-\end{equation}
-
-\begin{equation}
-  V = \pi * r^3
-\end{equation}
-
-\section{Kódy programu}
-Chceme-li vysázet například část zdrojového kódu programu (bez formátování), hodí se prostředí \verb|verbatim|: 
-\begin{verbatim}
-         (* nickname2 *)
-Lego> Refine in1
-             (do_reg (nickname1 h));
-Refine by  in1 (do_reg (nickname1 h))
-   ?4 : pcdata
-   ?5 : pcdata
-          (* surname2 *)
-Lego> Refine surname1 h;
-Refine by  surname1 h
-   ?5 : pcdata
-          (* email2 *)
-Lego> Refine undo_reg (email1 h);
-Refine by  undo_reg (email1 h)
-*** QED ***
-\end{verbatim}
-
-\section{Další poznámky}
-\subsection{České uvozovky}
-V souboru \verb|k336_thesis_macros.tex| je příkaz \verb|\uv{}| pro sázení českých uvozovek. \uv{Text uzavřený do českých uvozovek.}
-
-% JZ: 3.5.2009 \chapter z book zajistí automaticky
-%\subsection{Začátky kapitol na liché stránky}
-%Ve výsledném textu je dobré, když každá kapitola začíná na liché stránce. Tedy použijte:
-%\begin{verbatim}
-%  \cleardoublepage\include{1_uvod}
-%  \cleardoublepage\include{2_teorie}
-%   atd.\ldots{}
-%\end{verbatim}
-
-%*****************************************************************************
-\chapter{Seznam použitých zkratek}
-
-\begin{description}
-\item[2D] Two-Dimensional
-\item[ABN] Abstract Boolean Networks
-\item[ASIC] Application-Specific Integrated Circuit
-\end{description}
-\vdots
-
-%*****************************************************************************
-\chapter{UML diagramy}
-\textbf{\large Tato příloha není povinná a zřejmě se neobjeví v každé práci. Máte-li ale větší množství podobných diagramů popisujících systém, není nutné všechny umísťovat do hlavního textu, zvláště pokud by to snižovalo jeho čitelnost.}
-
-%*****************************************************************************
-\chapter{Instalační a uživatelská příručka}
-\textbf{\large Tato příloha velmi žádoucí zejména u softwarových implementačních prací.}
-
-%*****************************************************************************
-\chapter{Obsah přiloženého CD}
-\textbf{\large Tato příloha je povinná pro každou práci. Každá práce musí totiž obsahovat přiložené CD. Viz dále.}
-
-Může vypadat například takto. Váš seznam samozřejmě bude odpovídat typu vaší práce. (viz \cite{infodp}):
-
-\begin{figure}[h]
-\begin{center}
-\includegraphics[width=14cm]{figures/seznamcd}
-\caption{Seznam přiloženého CD --- příklad}
-\label{fig:seznamcd}
-\end{center}
-\end{figure}
-
-Na GNU/Linuxu si strukturu přiloženého CD můžete snadno vyrobit příkazem:\\ 
-\verb|$ tree . >tree.txt|\\
-Ve vzniklém souboru pak stačí pouze doplnit komentáře.
-
-Z \textbf{README.TXT} (případne index.html apod.)  musí být rovněž zřejmé, jak programy instalovat, spouštět a jaké požadavky mají tyto programy na hardware.
-
-Adresář \textbf{text}  musí obsahovat soubor s vlastním textem práce v PDF nebo PS formátu, který bude později použit pro prezentaci diplomové práce na WWW.
+%Adresář \textbf{text}  musí obsahovat soubor s vlastním textem práce v PDF nebo PS formátu, který bude později použit pro prezentaci diplomové práce na WWW.
 
 \end{document}
