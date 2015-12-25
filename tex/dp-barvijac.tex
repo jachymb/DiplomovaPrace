@@ -23,7 +23,7 @@
 \newenvironment{Figure}
   {\par\medskip\noindent\minipage{\linewidth}}
   {\endminipage\par\medskip}
-
+\usepackage[hyphens]{url}
 %=-=-=-=-=-=-=-=-=-=-=-=--=%
 % In case of problems with PDF fonts, one may try to uncomment this line:
 %\usepackage{lmodern}
@@ -191,10 +191,15 @@ unicode=true,
 
 \acknowledgements
 \noindent
-%Access to computing and storage facilities owned by parties and projects contributing to the National Grid Infrastructure MetaCentrum, provided under the programme "Projects of Large Infrastructure for Research, Development, and Innovations" (LM2010005), is greatly appreciated.
-%Access to the CERIT-SC computing and storage facilities provided under the programme Center CERIT Scientific Cloud, part of the Operational Program Research and Development for Innovations, reg. no. CZ. 1.05/3.2.00/08.0144, is greatly appreciated.
-Computational resources were provided by the MetaCentrum under the program LM2010005 and the CERIT-SC under the program Centre CERIT Scientific Cloud, part of the Operational Program Research and Development for Innovations, Reg. no. CZ.1.05/3.2.00/08.0144.
+I would like to thank to my supervisor doc. Filip Železný, Ph.D.,
+who introduced me to this bioinfomatical research and guided my work.
+The following people provided some help directly related to this work:
+J. Jungwirth (helped with chemical data), F. Malinka (helped with PDB access), and J. Luttinen 
+(helped with understanding BayesPy API).
+I~would like to also thank my family for their support during my studies. 
 
+\noindent
+Computational resources were provided by the MetaCentrum under the program LM 2010005 and the CERIT-SC under the program Centre CERIT Scientific Cloud, part of the Operational Program Research and Development for Innovations, Reg. no. CZ.1.05 / 3.2.00 / 08.0144.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%   Prohlaseni / Declaration 
@@ -207,8 +212,16 @@ Computational resources were provided by the MetaCentrum under the program LM201
  
 \abstractpage
 
-Translation of Czech abstract into English.
-
+This thesis pursues the application of methods of classical and relational machine learning
+to protein function prediction.
+The approach to protein function prediction suggested here is shown to be viable
+for various of the studied functions.
+Protein structural patterns characteristic for each of the studied functions
+were generated. 
+We observe that they confirm results of previous research
+and notice a frequent occurrence of relatively rare protein secondary structure types among these patterns.
+A method that makes the prediction results consistent with Gene Ontology, and which was hypothesized
+to make the prediction results even better, was tested, but failed fulfill this goal.
 % Prace v cestine musi krome abstraktu v anglictine obsahovat i
 % abstrakt v cestine.
 \vglue60mm
@@ -217,10 +230,15 @@ Translation of Czech abstract into English.
 \vskip 2.75\baselineskip
 
 \noindent
-Abstrakt práce by měl velmi stručně vystihovat její podstatu. Tedy čím se práce zabývá a co je jejím výsledkem/přínosem.
-
-\noindent
-Očekávají se cca 1 -- 2 odstavce, maximálně půl stránky.
+Tato diplomová práce se zabývá aplikací metod klasického a relačního strojového učení
+na predikci funckí bílkovin.
+Postup v~této práci navržený se ukazuje být použitelným pro různé zkoumané funkce.
+Byly vygenerovány strukturní vzory bílkovin charakteristické pro 
+jednotlivé zkoumané funkce.
+Pozorujeme, že potvrzují výsledky dřívějšího výzkumu
+a povšimneme si mezi vygenerovanými vzory častého výskytu relativně vzácných typů sekundrání struktury bílkovin.
+Metoda, která činí výsledky predikce konzistentní s Gene Ontology, 
+a o~níž jsme se domnívali, že výsledky predikce ještě zlepší, tohoto cíle nedosáhla.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  Obsah / Table of Contents 
 
@@ -265,10 +283,11 @@ Očekávají se cca 1 -- 2 odstavce, maximálně půl stránky.
 \chapter{Introduction}
 Identification of protein functions is a key task in medicinal and biological research.
 It is currently mostly done by laboratory experimental methods.
-Laboratory processes could be costly and time-consuming. 
+These laboratory processes can be relatively costly and time-consuming. 
 Being able to automate this process computationally would therefore save resources
 and made the research easier.
-Even approximate solutions are useful as the can give researchers guidance where
+Even approximate solutions are useful,
+as they can give researchers guidance where
 to start with protein function identification.
 
 Automated protein function prediction is then one of the classical problems in bioinformatics. 
@@ -282,40 +301,59 @@ A major advantage of relational learning approach is that it generates protein's
 (likely to determine protein's function) which can be interpreted and examined chemically.
 
 This work assumes that reader knows
-the techniques of well-know machine learning algorithms (mainly Suppor Vector Machines),
-Bayesian networks
+the techniques of state of the art machine learning algorithms (mainly Suppor Vector Machines),
+probability theory including Bayesian networks
 and the formalism of first order logic and graph theory.
 
 \section{Problem statement}
 
-This work examines the application of techniques used in \cite{szabova} towards a more ambitious goal:
+This work examines the application of techniques used in \cite{szabova}
+for prediction of DNA-binding protein property towards a more ambitious goal:
 Prediction of arbitrary protein function
 defined by the Gene Ontology (GO) \cite{go}\cite{gores},
-provided that there is enough training data for each particular function that we'd like to be able predict.
+provided, that there is enough training data available
+for each particular function that we would like to be able predict.
 
 The basic workflow is the following:
 First, a non-redundant data set of proteins is extracted from Protein Data Bank \cite{pdb}.
 The data set non-redundancy is achieved using technique described in \cite{maxind}.
 The information about each protein in converted to a relational form, 
 which in our case is a conjunction of positive, ground, first-order logic literals.
-The algorithm RelF \cite{relf} is then used to find characteristic features
+The algorithm RelF \cite{relf} is then used to find characteristic features (structural patterns)
 for a given protein function.
-Similarly to the work \cite{szabova}, the learned relational features are further
-processed by the classical machine learning algorithm Support Vector Machines
-to predict if a protein has a single given function.
-Subsequently a technique developed in \cite{bnet} based on Bayesian networks is applied to make the classification
-results consistent with the Gene Ontology,
-i.e. that if a protein is predicted to have a certain function
+This process is called propositionalization and it converts the 
+relational representation of proteins to vectors of non-negative integers.
+Similarly to the work \cite{szabova}, the relational features learned by RelF are further
+processed by the classical machine learning algorithm Support Vector Machines,
+resulting in a classifier which predicts if a protein has a single given function.
+On top of that,
+application of a technique developed in \cite{bnet} based on Bayesian networks is examined.
+This technique makes the classification
+results consistent with Gene Ontology,
+i.e. it's output will have the property that
+if a protein is predicted to have a certain function
 (identified by a GO term in the \emph{molecular function} namespace),
-then all functions defined by all more general GO terms should also be predicted.
+then all functions defined by all more general GO terms shall also be predicted.
 
 Finally, an evaluation of performance of this approach to protein function classification is done. 
+The relevance of the discovered structural patterns for each function is also evaluated  
+and interesting properties of the most relevant ones are examined.
 
 %Úvod charakterizující kontext zadání, případně motivace.
 %\cite{kuzelka} \cite{szabova} \cite{bnet} \cite{relf} \cite{sklearn} \cite{go} \cite{gores} \cite{maxind}
 
 \section{Thesis overview}
-TODO
+In chapter \ref{ch:molec}, the reader is reminded the basic biolmolecular knowledge about proteins,
+necessary for understanding the rest of the work.
+In chapter \ref{ch:sol}, the used method for protein function prediction
+is thoroughly described, step-by-step.
+In chapter \ref{ch:realization}, some implementational details
+along with instructions how to use the software created 
+for this work are presented.
+In chapter \ref{ch:results}, the results of the experiments
+are presented in detail and their meaning is discussed.
+Finally, in chapter \ref{ch:conclusion}, we summarize the 
+results and contribution of this work and propose possible further research directions.
 
 %Výsledná struktura vaší práce a názvy a rozsahy jednotlivých kapitol
 %se samozřejmě budou lišit podle typu práce a podle konkrétní povahy zpracovávaného tématu.
@@ -323,10 +361,11 @@ TODO
 
 
 \chapter{Biomolecular background}
+\label{ch:molec}
 In this chapter, some basic facts about proteins
 necessary for understanding this work are presented.
 
-Proteins are macromolecules composed of one or more chains of amino acid residues
+Proteins are macromolecules composed of one or more chains (often called \emph{strands}) of amino acid residues
 connected by peptide bond.
 Proteins have broad spectrum of functions in living organisms, including for example 
 various types of catalytic activity, signal transmission or DNA manipulation.
@@ -337,7 +376,8 @@ the terms ``gene'' and ``protein'' are interchangeable for the purpose of this t
 (especially in the context of Gene Ontology, which we actually use more like ``protein function ontology''.)
 
 %These amino acids are chained by peptide bond.
-\paragraph{Protein structural levels} With rare exceptions, that we won't consider, each of the amino acids is one the
+\paragraph{Protein structural levels} With rare exceptions, that we won't consider,
+each of the amino acids consisting the chain is one of the
 so-called proteinogenic amino acids (see table \ref{tab:aaprops}). 
 This chain as a linear sequence of symbols is defined to be the protein's \emph{primary structure}.
 There are also several types of structures that appear in proteins locally and are common among
@@ -345,30 +385,32 @@ proteins of various types.
 They could be though of as a higher-level structural units. This is known as the \emph{secondary structure}
 of a protein. In this work, the following types of secondary structure are distinguished:
 \begin{itemize}
- \item $\alpha$-helix
- \item $\beta$-bridge
- \item $\beta$-sheet
- \item $3_{10}$ helix
- \item $\pi$-helix
- \item Turn (hydrogen bonded)
- \item Bend
- \item Unknown
+ \item $\alpha$-helix,
+ \item $\beta$-bridge,
+ \item $\beta$-sheet,
+ \item $3_{10}$ helix,
+ \item $\pi$-helix,
+ \item Turn (hydrogen bonded),
+ \item Bend,
+ \item Unknown (coil).
 \end{itemize}
 The protein's geometric shape in three dimensional space is called the \emph{tertiary structure}. 
 Finally, multiple tertiary structures (strands) can unite into \emph{quaternary structure}.
-In this work, only primary, secondary and tertiary structures are considered for computations.
+In this work, only primary, secondary, and tertiary structures are considered for computations.
 Proteins that exhibit quaternary structure are present in data, but are dealt with per-strand; 
 the quaternary structure itself is ignored.
+An illustrative example of a protein with it's different structural levels 
+is shown in Figure \ref{fig:Protein_structure}.
 
-Interacting with other molecules (including the composition of a quaternary structure)
-may temporarily or even permanently change the protein's lower level structures,
+Interaction with other molecules (including the composition of a quaternary structure)
+may temporarily or even permanently change the protein's structure,
 especially tertiary structure.
-A change in protein's spatial confomation may also change the set of functions
+A change in protein's spatial confomation may also lead to change in the set of functions
 it exhibits. 
-In other ways, changing of structure can be part of the protein's function:
+In other cases, changing of structure can be part of the protein's function:
 For example a protein with DNA-binding function will somewhat change it's tertiary
-structure when bound to a DNA molecule, but it doesn't mean that it lacks this
-function when unbound.
+structure when bound to a DNA molecule, but it does not mean that it lacks this
+function while unbound.
 
 \begin{landscape}
 \begin{figure}[h]
@@ -390,6 +432,7 @@ function when unbound.
 
 %*****************************************************************************
 \chapter{Solution design}
+\label{ch:sol}
 % Analýza a návrh implementace (včetně diskuse různých alternativ a volby implementačního prostředí).
 
 \section{Data sources and preprocessing}
@@ -401,11 +444,12 @@ In this section, the nature and sources of the input data used later for machine
 Gene Ontology (GO) \cite{go} is a representation of relationships among various \emph{terms} identifying common (species-independent)
 biological processes, cellular components and molecular functions.
 The GO terms definitions and relationships among them are provided by human experts. 
-In this work, we're only interested in terms identifying molecular functions and the $\prec$ generality relation among them
+In this work, we are only interested in terms identifying molecular functions and the $is\_a$ generality relation among them
 (denoted here by the symbol $\prec$).
-These terms together with the $\prec$ relation form a directed acyclic graph, with a single leaf (node with zero outgoing edges),
-which represents the
-most general (i.e. arbitrary) molecular function. 
+These terms together with the $\prec$ relation form a directed acyclic graph.
+There is a special node called simply ``molecular function'',
+which is the most general term and represents arbitrary protein function;
+it has zero outgoing edges in the graph.
 The GO terms themselves are unambiguously identified either by a numerical id (e.g. GO:0046872) or a human-readable name
 (``metal ion binding'', in this case).
 The $\prec$ relationship maps a term to more general ones. So for example GO:0046872 $\prec$ GO:0043169 (``cation binding'')
@@ -413,7 +457,7 @@ The $\prec$ relationship maps a term to more general ones. So for example GO:004
  The $\prec$ relation is implicitly transitive,
  thus for for example also ``metal ion binding''  $\prec$ ``ion binding''.
  
-The ontology used in this thesis is the \texttt{go-basic.obo} \cite{gores} \url{http://geneontology.org/page/download-ontology} provided by the Gene Ontology Consortium. 
+The core ontology used in this thesis is the \texttt{go-basic.obo} \cite{gores} \url{http://geneontology.org/page/download-ontology} provided by the Gene Ontology Consortium. 
 It serves two purposes in this work:
 1) In the initial steps of the work, it is a simple list of protein functions.
 The molecular function terms are the protein functions studied in this work.
@@ -421,32 +465,33 @@ In this context, general functions are studied alongside specific ones.
 2) The underlying directed acyclic graph is used as the skeleton for construction of the 
 Bayesian network in the consistency correction step. 
 
-There are over 10000 terms in the ``molecular function'' namespace of Gene Ontology.
-A certain subset has to be selected because of two reasons:
-1) Most terms are too specific and have very few (of none at all) proteins associated with them
+There are over 10~000 terms in the ``molecular function'' namespace of Gene Ontology.
+A~certain subset has to be selected for two reasons:
+1) Most terms are too specific and have currently very few (or even none at all) proteins associated with them
 and therefore are useless for machine learning.
-2) The performed computations are difficult and computational resources are finite.
+2) The performed computations are difficult and computationally costly.
 Therefore only the terms which have the most proteins associated with them are used.
 Due to the transitivity of the $\prec$ relation,
-these also happen to be some of the most general terms in the ontology.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+these also happen to be some of the most general terms in the core ontology.
+The used subset of the ontology is displayed on Figure \ref{fig:go}.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
 
 \subsection{Proteins}
 \label{ssec:proteins}
 Data about proteins used in this work were extracted from Research Collaboratory for Structural Bioinformatics (RCSB) Protein Data Bank (PDB) \cite{pdb}.
-PDB currently publishes over 100000 entries containing information about identified existing protein structures.
-The entries contain various details about the molecular structure,
+PDB currently publishes over 100~000 entries containing information about identified existing protein structures.
+The entries contain various details about the protein,
 but only the protein identifier and structure are used in this work.
 The following data are thus extracted from each used entry:
 \begin{itemize}
  \item Protein name -- identifier. If a protein has a quaternary structure,
  it is separated into polypeptide strands each of which has a unique identifier and associated GO terms
- (possibly distinct among strands of the same complex.)
- \item Primary structure -- the linear chain of amino acids.
+ (possibly distinct terms among strands of the same complex.)
+ \item Primary structure -- the linear chain of amino acid residues.
  Many proteins in PDB have unidentified terminating (or sometimes other) amino acid residues.
  Only proteins with more than 90\% of it's primary structure identified are used.
- The relational representation of proteins offers a natural way of dealing with missing amino
- acid residue information as we will see later.
+ The relational representation of proteins offers a simple way of dealing with missing amino
+ acid residue information, as we will see later in subsection \ref{ssec:relrepr}.
  \item Secondary structure -- the information describing to which type of secondary structure each amino acid residue belongs.
  It could be of unknown/unidentified type. In an average PDB protein entry containing secondary structure information, 76\% of residues have an associated secondary structure.
  Only proteins with at least some information about secondary structure are used.
@@ -454,25 +499,26 @@ The following data are thus extracted from each used entry:
  This information cannot be used in completeness for tractability reasons. 
  Only the coordinates of the $\alpha$-carbon on each amino acid residue are used in computations.
  Before the relational learning phase, coordinates are used to calculate distances between $\alpha$-carbons discretized to 2Å.
- Note, however, that PDB entries often have resolution worse than 2Å.
+ Notice, however, that PDB entries often have resolution worse than 2Å.
  This is a potential problem in the data.
  The rationale behind including entries with worse resolution is that the data set will be large and thus the solution
- is expected to be robust towards position measurement errors.
+ is expected to be robust towards these atom position measurement errors.
 \end{itemize}
 
 Another information that PDB provides and could be used in learning is the ligand information.
 (\emph{Ligand} is the active site of the protein, for example a binding site.) 
-The idea is that protein function is mostly determined by the ligand and the structural parts 
-distant from the ligand are not so important.
+The idea is that protein function is mostly determined by the ligand and
+that the structural parts distant from the ligand are not so important.
 If only information about residues with certain distance from ligands were used,
 the data set size could be greatly reduced possibly bearing almost the same information
 exploitable for learning.
 Hence, it would be feasible to learn from larger data set and train a better classifier.
 Application of this idea was rejected in this work,
-because it is unclear how much is ligand information defining for each GO term,
+because it is unclear how much is ligand information defining for each GO term (protein function)
+or how large ligand neighbourhood is suitable,
 but it is reasonable to assume that it varies. 
-Therefore the evaluation results would be biased and performance of prediction
-on different GO terms could not be compared.
+Therefore the evaluation results would be biased and performance results of prediction
+on different protein functions could not be compared.
 It is, however, an interesting problem for future research in this field.
 
 \paragraph{Data location} Local mirrors of PDB databases were used in this work (see \url{http://www.rcsb.org/pdb/static.do?p=download/ftp/index.html}.)
@@ -490,7 +536,8 @@ greater prediction precision for that organism.
 With relational learning methods however, it would be interesting to study, if there exist protein
 structural patterns for a given function, that are common even in evolutionary distant species.
 
-\paragraph{Protein confomations} In the work \cite{szabova} where similar methods were used to predict DNA-binding protein 
+\paragraph{Protein confomations}
+In the work \cite{szabova} where similar methods were used to predict DNA-binding protein 
 function, only proteins in either their bound or unbound confomation were used.
 Arranging the data set to include only proteins of specific type of
 confomation makes sense if: 1) It is easy to determine this confomation type 
@@ -514,7 +561,9 @@ the protein in any confomation.
 \label{ssec:redundancy}
 One problem with Protein Data Bank is that it contains many redundant entries --
 proteins that are almost identical.
-That can be caused for example by a minor mutation that preserves the protein's function.
+That can be caused for example by 
+including a certain protein and also a protein that differs 
+only by a minor mutation which can even preserve the protein's function.
 Redundant entries should be removed from the data being used for machine learning for two reasons:
 1) They bloat the data set making the learning more computationally difficult.
 2) As a consequence of redundancy, many similar entries could appear in both training and testing data set
@@ -526,8 +575,8 @@ but in this work the approach to redundancy and it's removal described by \cite{
 The basic idea is the following: 
 Assume, that there exists a reasonable similarity relation on the protein data set. 
 This relation is represented by a graph -- distinct proteins are nodes and there
-is a edge between each two proteins that are similar by the given relation.
-We define a non-redundant data set a set of proteins such that no two are similar.
+is an edge between each two proteins that are similar according to the given relation.
+We define a non-redundant data set to be a set of proteins such that no two are similar.
 In other words, we would like to find a set of nodes in that graph such that no two are adjacent
 and we prefer this set to be the largest possible.
 This is a non-formal definition of the maximum independent set problem in graph theory.
@@ -543,19 +592,19 @@ Now, the similarity of two proteins is defined as the inverse of their local ali
 BLAST is an algorithm that finds and measures local alignment of two sequences,
 in our case of the sequences of amino acid residues of two proteins. 
 This means, it is a distance measure based purely on the primary structure of proteins.
-Let us denote by $S = BLAST(A,B)$ the score of alignment (BLOSUM62 substitution matrix is used) 
-of two proteins $A, B$.
+Let us denote by $S = BLAST(A,B)$ the score of alignment 
+of two proteins $A, B$. (Where BLOSUM62 substitution matrix is used.) 
 The BLAST program then also computes a number called \emph{Expect value} or simply \emph{E value}, 
 defined as follows:
 \[ E = K \cdot l_A \cdot l_B \cdot e^{-\lambda \cdot S}, \]
 where $l_A$ and $l_B$ are lengths of the sequences $A,B$ respectively and $K$ and $\lambda$ are constant parameters.
 The E value can be interpreted as the expected number of proteins present in a database of a given size
-that would match witch score $S$ or higher simply by chance.
+that would have an alignment witch score $S$ or higher simply by chance.
 Here, the E value is used in the following way: We define that $A$ is similar to $B$ if $E < T$ for some threshold $T$.
 Note, that generally $BLAST(A,B) \neq BLAST(B,A)$,
 so the closure under symmetry for the similarity relation is actually used.
 The question remains, how to choose the value $T$.
-For the purpose of this work $T = 10^{-50}$ was used.
+For the purpose of this work, $T = 10^{-50}$ was used.
 This choice was made intuitively and ad-hoc (to keep the data set large enough, see below),
 since the author is not aware of any theory that would guide such decision.
 But at least to illustrate what the value means, here is an example of best local alignment match
@@ -579,10 +628,10 @@ Here, amino-acid residues are encoded by the standard single-letter code (see ta
 
 Some disadvantages follow from using BLAST as distance function.
 There could be some proteins which have the same primary structure, 
-but can exist in varying spatial confomation exhibiting different functions.
+but can exist in varying spatial conformation exhibiting different functions.
 It would do no harm to include both in the data set if the difference is large enough.
-For BLAST, however, they will be indistinguishable and as a result 
-only one of them will appear in the final dataset.
+For BLAST, however, they will be indistinguishable and as a~result 
+only one of them will appear in the final data set.
 
 \section{Relational learning}
 In this section, approach to machine learning using relational learning based on structural patterns
@@ -592,7 +641,7 @@ it's application to the protein function prediction in this work is explained.
 \subsection{Relational representation of proteins}
 \label{ssec:relrepr}
 Let us first define how proteins can be represented as first order logic propositions.
-The data will be fed to the RelF algorithm,
+The data are going to be fed to the RelF algorithm,
 which expects a set of conjunctions of positive ground literals.
 The representation should therefore respect this limitation.
 
@@ -613,9 +662,6 @@ that there are three distinct residues, as the following conjunction:
 \[ Res(r1) \land Res(r2) \land Res(r3). \]
 Now we can add the information about the residue type. The conjunction becomes:
 \[ Res(r1) \land Type(r1, glu) \land Res(r2) \land Type(r2, pro) \land Res(r3) \land Type(r3, asp). \]
-The predicate $Res$ may seem redundant now.
-The reason why it is included is that it makes it algorithmically easier to deal with incomplete information about a residue.
-It is exploited in templates for the RelF algorithm later.
 This still contains no information about the primary structure, 
 which could be inserted in the following way:
 \begin{align*}
@@ -623,16 +669,18 @@ Res(r1)& \land Type(r1, glu) \land \\
 Res(r2)& \land Type(r2, pro) \land Next(r1, r2) \land \\
 Res(r3)& \land Type(r3, asp) \land Next(r2, r3). 
 \end{align*}
-we may not know the residue type, but perhaps we know some other information about it
-(for example the $Next$ relation)
+The predicate $Res$ may seem redundant now.
+The reason why it is included is that it makes it algorithmically easier to deal with incomplete information about a residue.
+We may not know the residue type, but perhaps we know some other information about it, for example the $Next$ relation in this case.
+It is also exploited in templates for the RelF algorithm later.
 
-
+\pagebreak
 The following information is actually encoded in the implementation of this work:
 \begin{itemize}
  \item Residue type -- simply the type of each amino acid, if it is known.
  \item Distance between residues -- distances of $\alpha$-carbons discretized to 2Å with upper bound 14Å.
- This is a tertiary structure infromation, but it also implicitly includes primary structure 
- as neighboring amino acid residues are not too distant.
+ This is a tertiary structure information, but it also implicitly includes primary structure 
+ as neighbouring amino acid residues are never much distant.
  \item Secondary structure type of which the residue is part.
  \item Background information -- polarity (polar / nonpolar) and electrical charge (positive / neutral / negative)
  information about amino acids.
@@ -649,14 +697,14 @@ The Glu-Pro-Asp subsequence of 1APJ from the example is then encoded in the foll
 &Polarity(asp, polar) \land Charge(asp, negative).
 \end{align*}
 
-Note, that we can also think of the conjunction as a certain first order logic interpretation:
-it defines for which constants the used predicates are true.
+Notice, that we can also think of the conjunction as a certain first order logic interpretation:
+it defines for which tuples of constants the used predicates are true.
 Each protein in the data set is converted to this relational form.
 It is obvious that this representation of proteins is great simplification.
 The hope is that this model captures some of the essential properties of the 
 protein while it is computationally feasible to work with such model.
 
-Also note, how easy it is in this relational representation to deal with missing data:
+Also notice, how easy it is in this relational representation to deal with missing data:
 If for example we do not know the secondary structure in which a certain amino acid 
 residue occurs or the polarity of an amino acid in case of Asx and Glx (see Table \ref{tab:aaprops})
 or even if there is completely missing information about an amino acid residue,
@@ -668,9 +716,10 @@ The algorithms that later work with this data cannot distinguish information
 that is not known and information that is know to be false.
 For example,
 not including $SecStr(r1, turn)$ because we do not know it although it is true
-is very different from not including $Type(r1, ala)$ which is know to be false,
-yet these two cases are represented the same way.
+is very different from not including $Type(r1, ala)$ which is know to be false.
+Yet, these two cases are represented the same way.
 
+The used charge and polarity properties of amino acids (the background knowledge) are displayed in table \ref{tab:aaprops}.
 \begin{table}
 \begin{center}
  \begin{tabular}{lccrr}
@@ -703,10 +752,12 @@ Valine & V & Val & neutral & nonpolar \\ \hline
 Leucine or islueucine & J & Xle & neutral & nonpolar \\ \hline
 Unknown or unidentified & X & Xxx & ? & ? \\ \hline
 \end{tabular}
-\caption{Proteinogenic amino acids and their used properties}
+\caption[Proteinogenic amino acids and their used properties]{Proteinogenic amino acids and their used properties.
+The data were copied from TreeLiker software example files.}
 \label{tab:aaprops}
 \end{center}
 \end{table}
+
 
 \subsection{Learning with relational features}
 A technique called \emph{propositionalization} is employed in this work. 
@@ -723,8 +774,9 @@ was used as the implementation of RelF here.
 
 A brief description of the propositionalization idea used in RelF algorithm follows.
 For more detailed description, see the article \cite{relf}.
+A broader view on propositionalization and the topic learning relational features is in \cite{kuzelka}.
 RelF could be classified as an inductive logic programming (ILP) algorithm.
-There are two important notions (\emph{$\theta$-subsumption} and \emph{$\theta$-reduction})
+There are two important notions -- \emph{$\theta$-subsumption} and \emph{$\theta$-reduction} --
 in many ILP problems including the RelF propositionalization technique.
 Further, the notion of \emph{tree-like} conjunction property is needed 
 for understanding of the propositionalization results.
@@ -759,12 +811,13 @@ produces the empty conjunction:
 RelF takes as input a relational data set
 where each member is labeled as belonging to either positive or negative class
 and a \emph{template}. 
+
 The data set is a set of first order logic conjunctions with positive ground literals,
 or equivalently set of first order logic interpretations.
 Transitivity of the $\prec$ relation is assumed for labeling the data.
 
 The template is a definition of a set of conjunctions called \emph{features}
-(note: not anymore with all terms ground)
+(notice: not anymore with all terms ground)
 that have the tree-like property. 
 The template itself is a conjunction,
 but the arguments of literals are \emph{variable types} and each of them has an associated \emph{mode}.
@@ -820,10 +873,10 @@ if there exists a different feature $F'$ such that $F$ and $F'$ cover
 the same negative (resp. positive) examples but $F$ covers only a subset
 of positive (resp. negative) features covered by $F'$.
 The purpose of limiting the set of possible features to only \emph{tree-like}
-is problem tractability.
+is the problem's tractability.
 In general,
 the $\theta$-subsumption and $\theta$-reduction problems are NP-HARD.
-For propositions which are tree-like, however, the problems 
+For propositions which are tree-like, however, the $\theta$-subsumption and $\theta$-reduction subproblems 
 (which obviously have to be solved many times during the RelF algorithm run)
 can be solved in polynomial time, which makes the task tractable.
 
@@ -833,15 +886,15 @@ for DNA-binding protein function prediction.
 This is because features here correspond to protein structural patterns and
 it is not surprising that if a structural pattern know to be determining a certain function
 appears more frequently in a protein, it is more likely to exhibit that function.
-Also note, that binary output would not provide any advantage when further piped to Support Vector Machines algorithm.
+Also notice, that binary output would not provide any advantage when further piped to Support Vector Machines algorithm.
 Therefore, the grounding counting RelF variant is also applied in this work. 
 
 After the propositionalization process is finished for a given function,
 the outputs are used to train a classifier
-such as Suppor Vector Machines (SVM), Random Forest or AdaBoost.
+such as Suppor Vector Machines (SVM), Random Forest or \mbox{AdaBoost}.
 With regard to the next step of consistency correction,
 the nature of the classifier decision function has to be considered.
-SVM have a continuous decision function
+SVMs have a continuous decision function
 (oriented distance from the separating hyperplane)
 and the distribution of it's values on testing data could be 
 roughly approximated by a mixture of two normal distribution (one for positive and one for negative examples).
@@ -849,15 +902,16 @@ The distance of their means is then a measure of class separability.
 For the later two classifier types the decision function
 would be discrete (votes of the sub-classifiers in the ensemble)
 and it's distribution on testing data could perhaps be approximated by a mixture of two binomial distributions.
-Only SVM were used in this work, though.
+Only SVMs were used in this work, though.
 
 The propositionalization process is performed for each studied function,
 where negative examples are taken from the set of proteins which are not annotated
 as having the function.
-This may not be always true -- it is reasonable to expect that the laboratory protein
-function identification processes do not identify a function that the protein that does not
-actually have, but it is not realistic to assume that it will always identify all of the functions
-the protein may have. 
+This may not be always true.
+It is reasonable to expect that the laboratory protein
+function identification processes do not misidentify the protein as having a function that it actually does not have.
+However, it is not realistic to assume that it will always identify all of the functions
+the protein has. 
 This way a protein with a certain function could end up appearing as a negative example 
 for that function, simply because that function has not yet been identified.
 This suggests that perhaps semi-supervised learning should be used instead.
@@ -867,14 +921,24 @@ could have significant impact on the algorithm.
 Dropping the redundant features filtering would cause a decrease in performance
 of uncertain extent. 
 The author of this work is not aware of any theory, that would describe such situations.
-Further, it is not obvious how to label at least some of the negative examples -
+Further, it is not obvious how to label at least some of the negative examples --
 i.e. to to find a subset of the data set that certainly does not have the studied function.
 Semi-supervised learning algorithms Label Propagation and Label Spreading \cite{semi}
 where briefly examined as a replacement for SVM.
 RelF ran on fully labeled data set as described above, but semi-supervised learning
 ran with positive examples labeled only.
 The resulting classifiers were only slightly better than ``random classifier''
-and hence far inferior to SVM (details on SVM performance are discussed later).
+and hence far inferior to SVM (details on SVM performance are discussed in chapter \ref{ch:results}).
+
+The complete template used here as input to RelF is the following:
+\begin{align*}
+&Res(-a) \land Res(+b) \land Dist(+a,-b, \#num) \land  \\
+&Type(+a, \#rt) \land Type(+b, \#rt) \land \\
+&Type(+a, -r1) \land Type(+b, -r2) \land \\
+&Charge(+r1, \#chrg) \land Charge(+r2, \#chrg) \land \\
+&Polarity(+r1, \#pol) \land Polarity(+r2, \#pol) \land \\
+&SecStr(+a, \#s) \land SecStr(+b, \#s).
+\end{align*}
 
 \section{Proposed consistency correction}
 As mentioned earlier, one issue with the prediction is that is does not have to be
@@ -910,7 +974,7 @@ In the experimental settings of \cite{bnet},
 this solution not only made the classification 
 consistent,
 but it also improved it for most (but not all) nodes.
-That is a major reason, why it is also tested in this work.
+That is the major reason, why it is also tested in this work.
 
 The basic structure of the network is the same as the used ontology 
 with the $\prec$ relation. 
@@ -922,10 +986,9 @@ because the direction of arrow in a Bayesian
 network should mean causation
 and a we can think of a more specific term as partial cause
 for a more general one but not the other way around.
-we mean nodes standing for more specific function.
 Further note, that relationships which are implied by the implicit transitivity
 of $\prec$ relation are not included -- only direct child to parent connections are.
-Further, each node has exactly one extra child node, these
+Finally, each hidden node has exactly one extra child node, these
 are called the \emph{observed nodes} (marked $\hat{y}_i$ in Figure \ref{fig:net}).
 The intended use of this network
 is marking all of the \emph{observed nodes} as observed
@@ -948,47 +1011,48 @@ Figure copied from \cite{bnet}.}
 \end{center}
 \end{figure}
 
-More formally, we want to find such consistent $y_1, ..., y_n$
+More formally, we want to find such consistent $y_1, ..., y_n \in \langle 0, 1 \rangle$
 (where $n$ is the number of nodes in the network)
 which maximize the expression:
 \[P(y_1, ..., y_n \,|\, \hat{y}_1, ..., \hat{y}_n) \propto P(\hat{y}_1, ..., \hat{y}_n\, | \, y_1, ..., y_n) \cdot P(y_1, ..., y_n). \]
-Since the values $y_1, ..., y_n$ are independent, we can factor the conditional probability:
-\[P(\hat{y}_1, ..., \hat{y}_n\, |\, y_1, ..., y_n) = \prod_{i=1}^n P(\hat{y_i} \,|\,y_i). \]
-Note, that in where $\hat{y_i}$ is real number,
-we will assume the distribution of $P(\hat{y_i}\,|\,y_i)$ to be Gaussian.
+Since the variables $\hat{y}_1, ..., \hat{y}_n$ are independent (classifiers do not communicate), we can factor the conditional probability:
+\[P(\hat{y}_1, ..., \hat{y}_n\, |\, y_1, ..., y_n) = \prod_{i=1}^n P(\hat{y}_i \,|\,y_i). \]
+Notice, that $\hat{y}_i$ is real number,
+we will assume the distribution of $P(\hat{y}_i\,|\,y_i)$ to be Gaussian.
 
 % TODO FIXME zdůvodnění proč je Gaussian
-%Then the joint distribution $P(\hat{y_i}, y_i)$ would be a mixture of Gaussians
+%Then the joint distribution $P(\hat{y}_i, y_i)$ would be a mixture of Gaussians
 %with the mixture coefficients being the probabilities $P(y_i)$.
 Provided the network structure, using the conditional independence rule,
 the joint probability on $y_i$ can be factored as:
 \[ P(y_1, ..., y_n) = \prod_{i=1}^n P(y_i\,|\,\{y_j : j  \,  \prec \,  i\}). \]
 
 Now, conditional probability tables for the distributions $P(y_i\,|\,\{y_j : j  \,  \prec \,  i\})$ 
-can be simply computed from \emph{training} data by counting of occurrences.
+can be simply computed from \emph{training} data by counting occurrences.
 A prior count of 1 sample for each case is used to avoid the 
 possibility of zero probability for some cases.
 To ensure consistency of the output, however, 
 we shall set:
 \[ P(y_i = \top \, | \, \exists y \in \{y_j : j  \,  \prec \,  i\}, \, y = \top  ) = 1, \]
 which means that a node must be positive if some more specific term is positive.
-The parameters of the probabilities $P(\hat{y_i}\,|\,y_i)$ can be
+And in fact, we again use a value close to 1 such as 0.99 in place of 1 to avoid zero probability for the other case causing problems during inference.
+The parameters of the probabilities $P(\hat{y}_i\,|\,y_i)$ can be
 calculated by taking part of the \emph{testing} data
 (not used later for evaluation) to
-obtain $y_i$ values and estimate the parameters of $P(\hat{y_i}\,|\,y_i)$
+obtain some number of $y_i, \hat{y}_i$ value pairs and estimate the parameters of $P(\hat{y}_i\,|\,y_i)$ from them,
 for example by the maximum likelihood method.
 In case of a binary classifier, 
 these parameters are contained within the confusion matrix divided 
 by the number of tested samples.
 
 There is one exception to the above: 
-The most general function called ``molecular\_function'',
+The most general function called ``molecular function'',
 which is true for any protein
 (and thus it does not even make sense to train it.)
 We set the conditional probability table trivially to:
 \[ P(molecular\_function = \top \,|\, anything ) = 1. \]
 
-This assumption that the distributions of $P(\hat{y_i}\,|\,y_i)$ are Gaussian  
+This assumption that the distributions of $P(\hat{y}_i\,|\,y_i)$ are Gaussian  
 deserves some justification.
 It is an ad-hoc assumption:
 Some simple distribution is needed to for us
@@ -1005,7 +1069,8 @@ It could be examined by statistical normality tests to get more detailed view on
 \begin{center}
 \includegraphics[width=12cm]{figures/g}
 \caption[Probability distributions of decision function values for DNA binding]{Distributions of decision function values for DNA binding protein function -- histograms of real data and estimated Gaussians;
-horizontal axis shows the oriented distance from the SVM's separating hyperplane, vertical axis shows probability density.}
+horizontal axis shows the oriented distance from the SVM's separating hyperplane, vertical axis shows probability density.
+The ratio of occurrences in data set is not taken into account in this plot.}
 \label{fig:gaussians}
 \end{center}
 \end{figure}
@@ -1016,8 +1081,7 @@ obtain the approximate posterior probabilities $P(y_i \, | \, \hat{y}_1, ..., \h
 It was chosen, because it can handle nodes with Gaussian distributions within the network.
 Once we have the posterior probabilities, 
 we can simply make the final classification by setting:
-\[ y_i := P(y_i = \top \, | \, \hat{y}_1, ..., \hat{y}_n) > \frac{1}{2}, \]
-for each $y_i$.
+\[ y_i := P(y_i = \top \, | \, \hat{y}_1, ..., \hat{y}_n) > \frac{1}{2} \, \, \forall y_i. \]
 
 \section{Experimental settings and methodological remarks}
 \label{sec:method}
@@ -1029,7 +1093,7 @@ With the filtering described in subsection \ref{ssec:proteins}
 and making the dataset non-redundant as described in subsection \ref{ssec:redundancy},
 we ended up with 3607 proteins.
 This number is reduced to $2^{11} = 2048$ for tractability (but also aesthetical) reasons. 
-This significantly more than the size of the largest data set used in the work
+That is still significantly more than the size of the largest data set used in the work
 \cite{szabova} for DNA binding prediction,
 where 138 DNA-binding and 843 non-DNA-binding (981 in total) proteins were used.
 
@@ -1070,7 +1134,10 @@ and they tend to give similar results as RBF SVM,
 but the nature of their decision function is different
 and would require appropriate modifications in the construction of the 
 correcting Bayesian network.
-The training samples are weighted in such way, that the total weights
+Since SVM require the features to be comparable,
+the individual features are scaled to zero mean and unit variance.
+(Testing data are scaled the same way as training data.)
+Then, the training samples are weighted in such way, that the total weights
 of positive samples is equal to the total weight of negative samples.
 Samples within each class have equal weights. 
 (This could be refined for example by assigning lesser weight
@@ -1078,7 +1145,7 @@ to proteins with more unknown information.)
 Subsequently the correcting Bayesian network is constructed
 for each fold by taking classifiers of all functions trained
 on the train set in the given fold
-and the probabilities $P(\hat{y_i}\,|\,y_i)$ are estimated from the test set.
+and the probabilities $P(\hat{y}_i\,|\,y_i)$ are estimated from the test set.
 The performance of the classification both before and after the correction
 is performed on the validation set.
 
@@ -1096,6 +1163,8 @@ propositionalize a relational data set given arbitrary features
 Therefore, if we kept some proteins aside from the beginning 
 with the intention to use them for final evaluation,
 we could not propositionalize them.
+(At least not without learning the features again,
+which is the most demanding computation that takes a month of machine time, see chapter \ref{ch:realization}.)
 If instead we used the method described above but with stratification,
 we could correctly (without information leakage) evaluate the network only with proteins
 that are in the intersection of the test sets of all used functions.
@@ -1120,7 +1189,7 @@ Assume that the original data set has size $M$ and contains $K$
 positive examples for a given function.
 Now we randomly take $m$ samples to be the test set (for train set, the reasoning would be the same).
 The probability that there are now $k$ positive samples 
-in the test set is given by the hypergeometric probability distribution.
+in the test set is given by the hypergeometric probability distribution with parameters $M,K,m$.
 Now we can ask -- for a given $M, K, m$ and a constant $\alpha > 1$, what is the probability $q$ where:
 \[ q = P\left(1 / \alpha \le \frac{\frac{K}{M}}{\frac{k}{m}} \le 1 \cdot \alpha \right) \,  ? \]
 Simply saying: Is it probable that the ratio of positive samples in test set will be much different
@@ -1128,7 +1197,7 @@ from the ratio in the original set?
 Will it be at most $\alpha$-times smaller or larger?
 Unfortunately, it is very complicated to work with this analytically due to the combinatorial 
 nature of hypergeometric distribution.
-(Read: The \texttt{FullSimplify} function in Mathematica could not work this out.)
+%(Read: The \texttt{FullSimplify} function in Mathematica could not work this out.)
 However, it can be worked with numerically.
 Figure \ref{fig:hyper} displays this piquantly non-monotonic probability for $M = 2048, m = 128, \alpha = 1.25$ and interesting 
 values of $K$.
@@ -1214,7 +1283,7 @@ GO:0032559  &  131   &  0.06  & 0.28 & 0.54 & 0.78 &   adenyl ribonucleotide bin
 Finally, let us remark that although cross-validation is normally used only to evaluate
 the classifier performance and the final classifier is produced by training 
 on the whole set, this is not done here.
-The reasons are two, first the learning is already very computationally demanding
+The reasons are two: First the learning is already very computationally demanding
 and this would make it even more and second, this work
 is intended to be experimental only and the classifier will not be 
 immediately applied, so it would not be useful anyway.
@@ -1225,7 +1294,7 @@ immediately applied, so it would not be useful anyway.
 In this chapter, more technical details about the actual implementation 
 of the ideas described in the previous chapter are discussed.
 
-\section{Requirements} implementation of this work was done using combinations of Linux shell scripts
+\section{Requirements} implementation of this work was done using combinations of Bash shell scripts
 and novel software written in the Python programming language.
 The scikit-learn \cite{sklearn} library was used as 
 implementation of machine learning algorithms including SVM, cross validation and receiver operating characteristic evaluation.
@@ -1236,7 +1305,7 @@ The dill library is necessary for data serialization done for speed and memory o
 Python version $\ge$ 3.5 is required.
 Finally a crucial component is the TreeLiker software,
 used as RelF implementation,
-which is a standalone third party product.
+which is a standalone third party product. (\url{http://ida.felk.cvut.cz/treeliker/TreeLiker.html})
 
 
 \section{Environment preparation} The implementation of this work can be divided into two parts that can be ran independently once some data are present:
@@ -1248,13 +1317,13 @@ First of all, the project should be configured in the \texttt{config.sh} file,
 which contains mainly names of data source files and numerical parameters
 such as the required data set size and so on.
 There is a sample configuration file present with the name \texttt{config-sample.sh},
-which should be self-explanatory.
+which should be self-explanatory and can be copied to \texttt{config.sh}.
 
 Then the data are downloaded from the sources mentioned in section \ref{sec:data}.
-Note, that the entire PDB archives (a gzipped xml file for each of the $\approx$ 110000 protein entries)
+Notice, that the entire PDB archives (a gzipped xml file for each of the $\approx$ 110000 protein entries)
 available for download using \texttt{rsync} tool add up to 42GiB to this date,
 which may take a long time to download.
-This can be done by running the \texttt{updatadata.sh}
+This can be done by running the \texttt{updatadata.sh} script.
 
 Once the data are downloaded, the \texttt{blastdb.sh} script can be ran,
 which filters the protein entries as described in subsection \ref{ssec:proteins}
@@ -1287,7 +1356,8 @@ between amino acid residues) is serialized and stored.
 When the protein data are requested again, even in subsequent 
 runs of the program, it is available quickly.
 
-\section{Main processing} When ran the program first parses the ontology in the obo format and protein annotation file
+\section{Main processing}
+When ran, the program first parses the ontology in the obo format and the protein annotation file
 automatically downloaded previously from Gene Ontology servers.
 It clips the data set to the required maximal size and decides which
 protein functions have enough positive examples in order to be studied.
@@ -1318,7 +1388,7 @@ allows easily to add and examine different types of classifiers
 or classifiers with different parameters supported 
 by scikit-learn in the \texttt{classifiers} variable
 in \texttt{learningTest} function.
-Then, evaluation on kept aside validation data 
+Then, evaluation on kept-aside validation data is performed
 and plotted ROC curve figures are saved
 in the \texttt{results} folder.
 
@@ -1331,6 +1401,7 @@ In this chapter,
 the performance of the classifiers in 
 general and comparison of performance on different functions
 is explored. 
+The features (structural patterns) generated during propositionalization are examined.
 Classification results without consistency correction are compared to
 corrected results.
 The classification quality metric used here is the area under curve (AUC)
@@ -1351,14 +1422,14 @@ for the corrected classification.
 With best AUC = 0.54 it is only slightly better than classifying at random
 and considering that the mean AUC is actually 0.49,
 the differences in AUC values on folds are possibly just random noise.
-The ROC curves for other functions after correction look similar to figure \ref{fig:roc_corrected}, although the variance is usually higher.
+The ROC curves for other functions after correction look similar to figure \ref{fig:roc_corrected}, although the variance between folds is usually higher.
 The possible cause for this is the following:
 The prior probability $P(y_i)$ for a function is equal to it's ratio in the data set (see table \ref{table:terms}).
-In case $P(y_i)$ is low (lower values are for more specific functions) and $\hat{y_i}$ is positive, but not very high
+In case $P(y_i)$ is low (lower values are for more specific functions) and $\hat{y}_i$ is positive, but not very high
 (i.e. it is classified as positive, but not with high certainty)
 it will happen, that the final classification output will be negative,
-although $\hat{y_i}$ is positive.
-(But with lower certainty expressed by $P(y_i\, | \, \hat{y_i})$ than if $\hat{y_i}$ were negative, of course.)
+although $\hat{y}_i$ is positive.
+(But with lower certainty expressed by $P(y_i\, | \, \hat{y}_i)$ than if $\hat{y}_i$ were negative, of course.)
 In other words, the class separation precision in the SVM classifier 
 is unable to outweight the prior probability which says that ``most proteins do not belong to this specific class''.
 This information then propagates even to less specific functions in the ontology during Bayesian inference.
@@ -1399,7 +1470,7 @@ but both ``hydrolase activity'' (Figure \ref{fig:roc_hydrolase_activity}) and ``
 (Figure \ref{fig:roc_transferase_activity}) 
 are more specific and yet classified with worse precision.
 The possible cause for that is that these specific functions simply have too small number of positive examples in the data set,
-while ``hydrolase activity'' contains significantly more positive examples than their union.
+while ``catalytic activity'' contains significantly more positive examples than their union.
 
 For the DNA-binding function, we can compare the results here to the results in \cite{szabova},
 where similar method was used.
@@ -1413,7 +1484,7 @@ The data set was constructed deliberately with the single studied function in mi
 and included only proteins in certain conformation while also
 focusing on so-called zinc-finger proteins which have a specific DNA-binding mechanism.
 
-Note, how some of the figures (for example Figure \ref{fig:roc_purine_nucleoside_binding})
+Notice, how some of the figures (for example Figure \ref{fig:roc_purine_nucleoside_binding})
 show exceptionally good ROC curve for one fold.
 That unfortunately does not mean the classifier trained on this fold
 is almost perfect, but that the train set in that fold does not contain 
@@ -1422,9 +1493,19 @@ because the cross-validation could not be stratified as described in the methodo
 For this reason, it would be reasonable here to take the mean or median AUC of 
 the folds as a metric of the classifier's quality.
 
+Let us also remind here some results, already mentioned earlier:
+The ensemble classifiers AdaBoost (with decision trees) and Random Forest
+were also examined and gave similar results as SVM.
+SVMs with different values of $C$ or different kernel (linear, polynomial) did not seem to perform well.
+Semi-supervised learning algorithms Label Propagation and Label Spreading \cite{semi}
+with only positive samples labelled gave very poor results.
+Deeper exploration of these topics would be interesting,
+but it was beyond the scope of this work.
+
 \section{Classifier performance plots}
 In the following figures,
 we can see in detail how the proposed method actually worked for each of the studied functions.
+
 \begin{multicols}{2}
 \begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_catalytic_activity}\captionof{figure}{Results for catalytic activity}\label{fig:roc_catalytic_activity}\end{center}\end{Figure}
 \begin{Figure}\begin{center}\includegraphics[width=\linewidth]{figures/roc_binding}\captionof{figure}{Results for binding}\label{fig:roc_binding}\end{center}\end{Figure}
@@ -1460,7 +1541,82 @@ we can see in detail how the proposed method actually worked for each of the stu
 \end{multicols}
 
 \section{Discovered structural patterns}
-\begin{table}\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
+As mentioned earlier, the features generated by RelF represent certain structural patterns 
+and the classifier training is basically deciding,
+how much determining is the presence or absence of each of these patterns for the protein to exhibit certain function.
+It is possible to evaluate, how much determining a certain pattern is,
+in this work the information gain ratio criterion on training data was used to assess that.
+The best performing patterns according to this criterion are summarized in tables \ref{tab:catalytic_activity}-\ref{tab:adenyl_ribonucleotide_binding}.
+The number \textbf{N} is the number of cross-validation folds (out of 8) in which the given feature was found
+among the top ten scoring.
+For each function, all features that scored in top ten in at least 2 folds are included.
+
+A very interesting property of this type of patterns is that they can
+be interpreted in terms of molecular biology;
+the patterns describe a certain local chemical configuration that could
+be likely to be found in the protein's active site (ligand).
+For example, notice how all of the structural patterns found for anion binding (Table \ref{tab:anion_binding})
+require a polar amino acid residue present. 
+That makes sense, the active site of the protein builds a magnetic field that can capture the ion.
+Most (but not all) of the features for cation binding (Table \ref{tab:cation_binding})
+also require a polar amino acid residue and we can further observe that except for RNA-binding the negatively charged
+aspartic acid only appears in features for cation binding and it's subsets,
+which is also does not contradict intuition. 
+
+We can again compare these results to the results in \cite{szabova},
+where discovered structural patterns for DNA-binding are described.
+On the first sight, the patterns discovered here (Table \ref{tab:DNA_binding}) look different,
+but that is mainly due the inclusion of polarity, charge and secondary structure information
+and of course the described differences in data set construction.
+Note also,  that the $\chi^2$ criterion was used in \cite{szabova}, not the information gain ratio.
+However, we can confirm the importance of presence of the amino acids histidine
+and cysteine in DNA-binding sites, which was presented in \cite{szabova}.
+Because if focused on zinc-finger DNA-binding proteins, 
+we can also have a look at discovered patterns for zinc ion binding (Table \ref{tab:zinc_ion_binding})
+and observe that patterns containing the amino acids cysteine are again frequent there and phenylalanine,
+found to be significant too in \cite{szabova} is also present.
+
+Is is interesting to study how the discovered patterns for a given function
+are often similar.
+For example, in the patterns for zinc ion binding (Table \ref{tab:zinc_ion_binding}) all the top three patterns require a neutral amino acid residue
+in the same distance to a cysteine residue while the secondary structure requirements are also similar.
+
+A remarkable observation is the frequent presence of $3_{10}$-helices and $\beta$-bridges in the patterns,
+despite being relatively rare type of secondary structure.
+They cover only 3.48\% and 1.17\% of the overall secondary structure.
+Yet, $3_{10}$-helices appear in 5 of 12 interesting features found for catalytic activity (Table \ref{tab:catalytic_activity}).
+They are also frequent in
+RNA binding (6 of 13, Table \ref{tab:RNA_binding}),
+heterocyclic compound binding (6 of 13, Table \ref{tab:heterocyclic_compound_binding}),
+organic cyclic compound binding (5 of 13, Table \ref{tab:organic_cyclic_compound_binding}),
+ion binding (3 of 11, Table \ref{tab:ion_binding}),
+hydrolase activity (3 of 12, Table \ref{tab:hydrolase_activity}),
+metal ion binding (3 of 12, Table \ref{tab:metal_ion_binding}) 
+and also appear less frequently in many other functions.
+In the second case, $\beta$-bridges are frequent in features for 
+zinc ion binding (6 of 15, Table \ref{tab:zinc_ion_binding}),
+the more general function transition metal ion binding (6 of 18, Table \ref{tab:transition_metal_ion_binding}),
+purine nucleoside binding (3 of 10, Table \ref{tab:purine_nucleoside_binding}),
+receptor binding (3 of 17, Table \ref{tab:receptor_binding})
+and less frequently also in features for other functions.
+For comparison, table \ref{tab:secstr} displays the frequencies of secondary structure types in the data.
+\begin{table}[h]\begin{center}\begin{tabular}{lrr}\textbf{Secondary structure type} & \textbf{\% of all data} & \textbf{\% of known} \\ \hline  
+$\alpha$-helix & 31.07 & 41.42 \\ \hline
+$\beta$-strand & 20.11 & 26.81 \\ \hline
+Turn & 10.69 & 14.25 \\ \hline
+Bend & 8.47 & 11.29 \\ \hline
+$3_{10}$-helix & 3.48 & 4.64 \\ \hline
+$\beta$-bridge & 1.17 & 1.57 \\ \hline
+$\pi$-helix & 0.02 & 0.03 \\ \hline
+Unknown (coil)  & 24.97 & - \\ \hline
+\end{tabular}\end{center}\caption{Frequencies of secondary structure types}\label{tab:secstr}\end{table}
+This prevalence of rare secondary structure types in 
+structural patterns defining for functions
+demands a~biolomolecular explanation
+which the author of this work is currently unable to give
+and a~possibility of further research is thus offered.
+
+\begin{table}[h]\begin{tabularx}{\textwidth}{cX}\textbf{N} & \textbf{Feature} \\ \hline  
 8 & Dist(A, B, 14),  Type(A, gly), Type(B, ile), SecStr(B, $3_{10}$-helix)\\ \hline 
 7 & Dist(A, B, 14), Polar(C, yes),  Type(A, gly), Type(B, C), SecStr(A, $3_{10}$-helix), \newline SecStr(B, bend)\\ \hline 
 7 & Dist(A, B, 14), Dist(A, C, 14),  Type(B, lys), SecStr(A, $\alpha$-helix), SecStr(C, $3_{10}$-helix)\\ \hline 
@@ -1868,15 +2024,64 @@ we can see in detail how the proposed method actually worked for each of the stu
  
 %*****************************************************************************
 \chapter{Conclusion}
+\label{ch:conclusion}
+In this work,
+the techniques of machine learning with propositionalization \cite{kuzelka}
+of relational representation of non-redundant set \cite{maxind} of proteins 
+extracted from Protein Data Bank \cite{pdb}
+were applied to prediction of 31 different protein functions.
+Method based on Bayesian networks \cite{bnet} to make the results 
+consistent with Gene Ontology \cite{go} was examined.
+Finally, the classifier performance for each function was evaluated
+and discovered protein structural patterns discussed.
 
+In an offshoot to methodology theory,
+we examined and quantified the impact of not stratifying
+during cross-validation which could 
+be explored in more depth using probability theory.
+
+With some methodological differences,
+the methods applied in \cite{szabova} to protein DNA-binding
+prediction, we were able to successfully predict a wider
+range of functions.
+The classification prediction accuracy (measured by ROC AUC)
+is generally, but not always,
+lower for more general functions. 
+Of the studied functions,
+the classification results were best for
+zinc ion binding (and closely related transition metal ion binding),
+catalytic activity, adenyl nucleotide binding and ribonucleoside binding.
+These results show that this approach to protein function prediction
+is definitely viable and worth further exploration.
+Possibilities of further research include:
 \begin{itemize}
-\item Zhodnocení splnění cílů DP/BP a  vlastního přínosu práce (při formulaci je třeba vzít v potaz zadání práce).
-\item Diskuse dalšího možného pokračování práce.\end{itemize}   
-%*****************************************************************************
-% Seznam literatury je v samostatnem souboru reference.bib. Ten
-% upravte dle vlastnich potreb, potom zpracujte (a do textu
-% zapracujte) pomoci prikazu bibtex a nasledne pdflatex (nebo
-% latex). Druhy z nich alespon 2x, aby se poresily odkazy.
+ \item Focusing only on a single function and constructing the protein data set with that in mind. 
+ \item Defining, how to suitably include only protein ligand information, which would potentially enabled to work with larger data set.
+ \item Trying the method on different species or larger taxons.
+ \item Examining in more detail different classifiers than Support Vector Machines.
+ \item Construct a propositionalization algorithm, that would generate more general formulas for more general functions. 
+ That would potentially lead to even better interpretability of the discovered structural patterns.
+ \item Further development of the TreeLiker software, which would enable to count groundings given arbitrary feature and it's interpretations (protein records in this case).
+ \item Elaborate on the possibilities of applications of semi-supervised learning methods, bot relational and classical.
+\end{itemize}
+
+
+The method for making the classification results consistent with Gene Ontology \cite{bnet}
+function hierarchy failed to make the classification better,
+while it made the results consistent with the studied subset of Gene Ontology,
+the final classification was worse than without this consistency correction.
+The possible causes for this failure were discussed,
+but it would also be worth a more detailed research.
+Especially, a method that would be robust towards low prior probabilities of 
+protein function occurrence in the data should be designed.
+
+In the discovered relational features,
+remarkably frequent occurrence of the $3_{10}$-helix and $\beta$-bridge
+secondary structure types was observed, despite the fact that they are relatively rare.
+The discovered structural patterns for DNA-binding correlate 
+to patterns discovered in \cite{szabova} which further validates the method.
+Hence, the discovered patterns call for interpretation by an expert 
+in molecular biology and more interdisciplinarity in this research field.
 
 %\bibliographystyle{abbrv}
 \bibliographystyle{plain}
