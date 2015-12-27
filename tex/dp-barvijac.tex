@@ -12,6 +12,8 @@
 % pripadne pisete-li cesky, pak lze zkusit take:
 % \usepackage[OT1]{fontenc} 
 \usepackage[utf8]{inputenc}
+\usepackage[x11names,rgb]{xcolor}
+
 \usepackage{lscape}
 \usepackage{amsmath,amssymb,latexsym}
 \usepackage{epstopdf} %converting to PDF
@@ -24,6 +26,10 @@
   {\par\medskip\noindent\minipage{\linewidth}}
   {\endminipage\par\medskip}
 \usepackage[hyphens]{url}
+\usepackage{tikz}
+\usepackage{tikzscale}
+\usetikzlibrary{snakes,arrows,shapes}
+
 %=-=-=-=-=-=-=-=-=-=-=-=--=%
 % In case of problems with PDF fonts, one may try to uncomment this line:
 %\usepackage{lmodern}
@@ -113,7 +119,7 @@ pdfauthor={\FirstandFamilyName},
 bookmarks=true,
 colorlinks=true,
 breaklinks=true,
-urlcolor=red,
+urlcolor=black,
 citecolor=black,
 linkcolor=black,
 unicode=true,
@@ -1081,7 +1087,7 @@ obtain the approximate posterior probabilities $P(y_i \, | \, \hat{y}_1, ..., \h
 It was chosen, because it can handle nodes with Gaussian distributions within the network.
 Once we have the posterior probabilities, 
 we can simply make the final classification by setting:
-\[ y_i := P(y_i = \top \, | \, \hat{y}_1, ..., \hat{y}_n) > \frac{1}{2} \, \, \forall y_i. \]
+\[ y_i := P(y_i = \top \, | \, \hat{y}_1, ..., \hat{y}_n) > \frac{1}{2} \, \, \forall i. \]
 
 \section{Experimental settings and methodological remarks}
 \label{sec:method}
@@ -1108,10 +1114,15 @@ and in the end, it outputs the data propositionalized on the
 union of features found in all iterations.
 Sample size is set to $2^9=512$ and number of samples (iterations) is set to $2^3=8$.
 
+
 \begin{landscape}
+
 \begin{figure}[h]
 \begin{center}
-\includegraphics[width=21cm]{figures/go-basic_children}
+\begin{tiny}
+\includegraphics[width=22.5cm]{figures/go.tikz}
+\end{tiny}
+%\includegraphics[width=22cm]{figures/go-basic_children}
 \caption{The used subset of the Gene Ontology}
 \label{fig:go}
 \end{center}
@@ -1138,7 +1149,7 @@ Since SVM require the features to be comparable,
 the individual features are scaled to zero mean and unit variance.
 (Testing data are scaled the same way as training data.)
 Then, the training samples are weighted in such way, that the total weights
-of positive samples is equal to the total weight of negative samples.
+of positive samples are equal to the total weight of negative samples.
 Samples within each class have equal weights. 
 (This could be refined for example by assigning lesser weight
 to proteins with more unknown information.)
